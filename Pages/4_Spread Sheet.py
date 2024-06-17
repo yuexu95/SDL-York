@@ -59,7 +59,7 @@ def main():
     with col1:
         rna_scale = st.number_input("RNA Scale (μg)", min_value=0.0, step=1.0, value=3.0)
     with col2:
-        rna_stock = st.number_input("RNA Stock Concentration (μg/μL)", min_value=0.0, step=0.1, value=1.0)
+        rna_stock = st.number_input("RNA Stock (μg/μL)", min_value=0.0, step=0.1, value=1.0)
     with col3:
         ionizable_lipid_to_rna_ratio = st.number_input("Ionizable Lipid to RNA Ratio", min_value=0.0, max_value=100.0, step=0.1, value=10.0)
     with col4:
