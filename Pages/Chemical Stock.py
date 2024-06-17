@@ -1,10 +1,5 @@
 from datetime import datetime, timedelta
-
-import altair as alt
-import mitosheet
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 import streamlit as st
 from mitosheet.streamlit.v1 import spreadsheet
 from mitosheet.streamlit.v1.spreadsheet import _get_mito_backend

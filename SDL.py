@@ -5,7 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from streamlit_extras.colored_header import colored_header
 import datetime
-from streamlit_extras.chart_annotations import get_annotations_chart
+
 
 def make_progress():
     # Define the progress of the experiment (e.g., 23%)
@@ -202,17 +202,17 @@ def example() -> None:
         initial_sidebar_state="expanded",
     )
 
-    current_time = datetime.datetime.now().time()  # Get current system time
+    # Display the current date and time
+    current_datetime = datetime.datetime.now()
 
+    # Use colored_header to display a header with the current system time
     colored_header(
         label="SDL-LNP",
-        description=f"the current system time: {current_time.strftime('%H:%M:%S')}",
-        color_name="violet-70",
+        description=f"The current system time: {current_datetime.strftime('%H:%M:%S')}",
+        color_name="green-100",
     )
-
-def colored_header(label, description, color_name):
-    st.markdown(f"<h1 style='color:{color_name}'>{label}</h1>", unsafe_allow_html=True)
-    st.markdown(description, unsafe_allow_html=True)
+    
+    st.write("Current date and time:", current_datetime)
 
 if __name__ == "__main__":
     example()
@@ -221,15 +221,16 @@ alt.themes.enable("dark")
 
 col = st.columns((1.8, 4.5), gap="large")
 
-
 with col[0]:
     st.markdown("#### Progress")
     progress = make_progress()
     st.plotly_chart(progress, use_container_width=True)
 
 with col[1]:
-    choices = ["Reagent", "Current Experiment", "Plate 3"]
-    plate_choice = st.selectbox("Select Plate", choices)
+    choices = ["Reagent", "Current Experiment"]
+    plate_choice = st.selectbox("Select", choices)
+
+    # Determine which plate to create based on the user's choice
     if plate_choice == "Reagent":
         plate = make_plate_legacy()
     elif plate_choice == "Current Experiment":
