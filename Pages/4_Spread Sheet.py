@@ -43,19 +43,44 @@ def make_lnp_formulation(rna_scale, rna_stock_concentration, ionizable_lipid_to_
     final_rna_concentration = rna_scale / final_lnp_volume
 
     data = {
-        "Component": ["Ionizable Lipid", "Helper Lipid", "Cholesterol", "PEG-DMG2000", "Ethanol Phase", "Aqueous Phase", "RNA", "Citrate", "Water", "Final LNP Volume", "Final RNA Concentration"],
-        "Moles": [f"{ionizable_lipid_moles:.2f}", f"{helper_lipid_moles:.2f}", f"{cholesterol_moles:.2f}", f"{pegdmg2000_moles:.2f}", "", "", "", "", "", "", ""],
-        "Mass (μg)": [f"{ionizable_lipid_mass:.2f}", f"{helper_lipid_mass:.2f}", f"{cholesterol_mass:.2f}", f"{pegdmg2000_mass:.2f}", "", "", "", "", "", "", ""],
-        "Volume (μL)": [f"{ionizable_lipid_volume:.2f}", f"{helper_lipid_volume:.2f}", f"{cholesterol_volume:.2f}", f"{pegdmg2000_volume:.2f}", f"{ethanol_phase_volume:.2f}", f"{aqueous_phase_volume:.2f}", f"{rna_volume:.2f}", f"{citrate_volume:.2f}", f"{water_volume:.2f}", f"{final_lnp_volume:.2f}", ""],
-        "Concentration (μg/μL)": ["", "", "", "", "", "", "", "", "", "", f"{final_rna_concentration:.2f}"]
+        "Component": ["Ionizable Lipid", "Helper Lipid", "Cholesterol", "PEG-DMG2000", "Ethanol Phase", "Aqueous Phase", "Citrate", "Water", "Final LNP Volume", "Final RNA Concentration"],
+        "Moles": [f"{ionizable_lipid_moles:.2f}", f"{helper_lipid_moles:.2f}", f"{cholesterol_moles:.2f}", f"{pegdmg2000_moles:.2f}", "", "", "", "", "", ""],
+        "Mass (μg)": [f"{ionizable_lipid_mass:.2f}", f"{helper_lipid_mass:.2f}", f"{cholesterol_mass:.2f}", f"{pegdmg2000_mass:.2f}", "", "", "", "", "", ""],
+        "Volume (μL)": [f"{ionizable_lipid_volume:.2f}", f"{helper_lipid_volume:.2f}", f"{cholesterol_volume:.2f}", f"{pegdmg2000_volume:.2f}", f"{ethanol_phase_volume:.2f}", f"{aqueous_phase_volume:.2f}", f"{citrate_volume:.2f}", f"{water_volume:.2f}", f"{final_lnp_volume:.2f}", ""],
+        "Concentration (μg/μL)": ["", "", "", "", "", "", "", "", "", f"{final_rna_concentration:.2f}"]
     }
+    volumes = {
+        "ionizable_lipid_volume": ionizable_lipid_volume,
+        "helper_lipid_volume": helper_lipid_volume,
+        "cholesterol_volume": cholesterol_volume,
+        "pegdmg2000_volume": pegdmg2000_volume,
+        "ethanol_phase_volume": ethanol_phase_volume,
+        "rna_volume": rna_volume,
+        "citrate_volume": citrate_volume,
+        "water_volume": water_volume
+    }
+    return pd.DataFrame(data), volumes
 
-    return pd.DataFrame(data)
+def prepare_bulk_lnp_volumes(volumes, times):
+    """
+    Prepares the volumes for any times the LNP with extra.
+
+    Returns:
+    A list of dictionaries containing the bulk volumes.
+    """
+    return [
+        {"Component": "Bulk Helper Lipid", "Volume (μL)": volumes["helper_lipid_volume"] * times * 1.5},
+        {"Component": "Bulk Cholesterol", "Volume (μL)": volumes["cholesterol_volume"] * times * 1.5},
+        {"Component": "Bulk PEG-DMG2000", "Volume (μL)": volumes["pegdmg2000_volume"] * times * 1.5},
+        {"Component": "Bulk Ethanol Phase", "Volume (μL)": volumes["ethanol_phase_volume"] * times * 1.5},
+        {"Component": "Bulk RNA", "Volume (μL)": volumes["rna_volume"] * times * 1.2},
+        {"Component": "Bulk Citrate", "Volume (μL)": volumes["citrate_volume"] * times * 1.2},
+        {"Component": "Bulk Water", "Volume (μL)": volumes["water_volume"] * times * 1.2}
+    ]
 
 def main():
     st.title("LNP Formulation Calculator")
-
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4 = st.columns(4, gap="large")
     with col1:
         rna_scale = st.number_input("RNA Scale (μg)", min_value=0.0, step=1.0, value=3.0)
     with col2:
@@ -96,13 +121,22 @@ def main():
         cholesterol_ratio = st.number_input("Cholesterol Molar Ratio", min_value=0.0, step=0.1, value=46.5)
     with col16:
         pegdmg2000_ratio = st.number_input("PEG-DMG2000 Molar Ratio", min_value=0.0, step=0.1, value=2.5)
+    
+    col17, col18 = st.columns(2)
+    with col17:
+        bulk_times = st.number_input("Bulk Preparation Times", min_value=1, step=1, value=1)
 
     if st.button("Calculate"):
         # Use the make_lnp_formulation function to calculate the values
-        result_df = make_lnp_formulation(rna_scale, rna_stock, ionizable_lipid_to_rna_ratio, aqueous_to_ethanol_ratio, ionizable_lipid_mw, helper_lipid_mw, cholesterol_mw, pegdmg2000_mw, ionizable_lipid_concentration, helper_lipid_concentration, cholesterol_concentration, pegdmg2000_concentration, ionizable_lipid_ratio, helper_lipid_ratio, cholesterol_ratio, pegdmg2000_ratio)
-        
+        result_df, volumes = make_lnp_formulation(rna_scale, rna_stock, ionizable_lipid_to_rna_ratio, aqueous_to_ethanol_ratio, ionizable_lipid_mw, helper_lipid_mw, cholesterol_mw, pegdmg2000_mw, ionizable_lipid_concentration, helper_lipid_concentration, cholesterol_concentration, pegdmg2000_concentration, ionizable_lipid_ratio, helper_lipid_ratio, cholesterol_ratio, pegdmg2000_ratio)
+    
         # Display the results
         st.dataframe(result_df)
+    
+        # Calculate and display bulk volumes
+        bulk_volumes = prepare_bulk_lnp_volumes(volumes, bulk_times)
+        bulk_df = pd.DataFrame(bulk_volumes)
+        st.dataframe(bulk_df)
 
 if __name__ == "__main__":
     main()
