@@ -1,10 +1,9 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
-import plotly.express as px
 import plotly.graph_objects as go
 from streamlit_extras.colored_header import colored_header
-import datetime
+from datetime import datetime, timedelta
 
 
 def make_progress():
@@ -194,6 +193,7 @@ def get_annotations_chart(chart: alt.Chart, annotations: list) -> alt.Chart:
     
     return chart
 
+# Main function for the Streamlit app
 def example() -> None:
     st.set_page_config(
         page_title="SDL Dashboard",
@@ -203,7 +203,7 @@ def example() -> None:
     )
 
     # Display the current date and time
-    current_datetime = datetime.datetime.now()
+    current_datetime = datetime.now()
 
     # Use colored_header to display a header with the current system time
     colored_header(
@@ -211,11 +211,10 @@ def example() -> None:
         description=f"The current system time: {current_datetime.strftime('%H:%M:%S')}",
         color_name="green-100",
     )
-    
-    st.write("Current date and time:", current_datetime)
 
 if __name__ == "__main__":
     example()
+
 
 alt.themes.enable("dark")
 
@@ -227,13 +226,15 @@ with col[0]:
     st.plotly_chart(progress, use_container_width=True)
 
 with col[1]:
-    choices = ["Reagent", "Current Experiment"]
+    choices = ["Feeder", "Current Experiment", "Chemical Stock"]
     plate_choice = st.selectbox("Select", choices)
 
-    # Determine which plate to create based on the user's choice
-    if plate_choice == "Reagent":
+# Determine which plate to create based on the user's choice
+    if plate_choice == "Feeder":
         plate = make_plate_legacy()
     elif plate_choice == "Current Experiment":
+        plate = make_plate()
+    elif plate_choice == "Chemical Stock":
         plate = make_plate()
 
     st.plotly_chart(plate, use_container_width=True)
