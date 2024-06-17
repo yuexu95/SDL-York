@@ -3,7 +3,9 @@ import pandas as pd
 import altair as alt
 import plotly.express as px
 import plotly.graph_objects as go
-
+from streamlit_extras.colored_header import colored_header
+import datetime
+from streamlit_extras.chart_annotations import get_annotations_chart
 
 def make_progress():
     # Define the progress of the experiment (e.g., 23%)
@@ -134,17 +136,90 @@ def make_plate_legacy():
     fig.update_layout(title="Regaent Plate", xaxis_title="Column", yaxis_title="Row")
     return fig
 
+def get_data(file_path: str) -> pd.DataFrame:
+    """
+    Function to read data from a CSV file into a pandas DataFrame.
+    
+    Parameters:
+    - file_path (str): Path to the CSV file.
+    
+    Returns:
+    - pd.DataFrame: DataFrame containing the data from the CSV file.
+    """
+    return pd.read_csv(file_path)
 
-st.set_page_config(
-    page_title="SDL Dashboard",
-    page_icon="🦾",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+def get_chart(data: pd.DataFrame) -> alt.Chart:
+    """
+    Function to create an Altair chart from a pandas DataFrame.
+    
+    Parameters:
+    - data (pd.DataFrame): Input DataFrame containing the data.
+    
+    Returns:
+    - alt.Chart: Altair chart object.
+    """
+    chart = alt.Chart(data).mark_point().encode(
+        x='date:T',
+        y='value:Q',
+        color='symbol:N',  # Nominal (categorical) data
+        tooltip=['date:T', 'value:Q', 'symbol:N']
+    ).interactive()
+    
+    return chart
+
+def get_annotations_chart(chart: alt.Chart, annotations: list) -> alt.Chart:
+    """
+    Function to add annotations to an Altair chart.
+    
+    Parameters:
+    - chart (alt.Chart): Altair chart object to which annotations will be added.
+    - annotations (list): List of tuples, each containing (date, annotation_text).
+    
+    Returns:
+    - alt.Chart: Altair chart object with annotations added.
+    """
+    for date, text in annotations:
+        chart += alt.Chart(pd.DataFrame({'date': [date], 'text': [text]})).mark_text(
+            align='left',
+            baseline='middle',
+            dx=7,
+            dy=-10,
+            fontSize=10,
+            color='black'
+        ).encode(
+            x='date:T',
+            y=alt.value(50),  # Vertical position of the annotation
+            text='text'
+        )
+    
+    return chart
+
+def example() -> None:
+    st.set_page_config(
+        page_title="SDL Dashboard",
+        page_icon="🦾",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+
+    current_time = datetime.datetime.now().time()  # Get current system time
+
+    colored_header(
+        label="SDL-LNP",
+        description=f"the current system time: {current_time.strftime('%H:%M:%S')}",
+        color_name="violet-70",
+    )
+
+def colored_header(label, description, color_name):
+    st.markdown(f"<h1 style='color:{color_name}'>{label}</h1>", unsafe_allow_html=True)
+    st.markdown(description, unsafe_allow_html=True)
+
+if __name__ == "__main__":
+    example()
 
 alt.themes.enable("dark")
 
-col = st.columns((1.8, 4.5, 2), gap="large")
+col = st.columns((1.8, 4.5), gap="large")
 
 
 with col[0]:
@@ -162,11 +237,3 @@ with col[1]:
 
     st.plotly_chart(plate, use_container_width=True)
 
-with col[2]:
-    st.markdown("#### Control Panel")
-    st.button("Feed 300ul racks")
-    st.button("Feed 20ul racks")
-    st.button("Feed PCR plate")
-    st.button("Feed white plate")
-
-    st.markdown("#### Logs")
