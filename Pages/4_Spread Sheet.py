@@ -3,6 +3,64 @@ import pandas as pd
 import firebase_admin
 from firebase_admin import credentials, firestore
 
+# 初始化 Firebase 应用
+cred = credentials.Certificate("path/to/your/serviceAccountKey.json")
+firebase_admin.initialize_app(cred)
+
+# 初始化 Firestore 客户端
+db = firestore.client()
+# 创建数据
+def create_data():
+    doc_ref = db.collection("users").document("user_id")
+    doc_ref.set({
+        "name": "John Doe",
+        "age": 25,
+        "email": "john.doe@example.com"
+    })
+
+# 读取数据
+def read_data():
+    doc_ref = db.collection("users").document("user_id")
+    doc = doc_ref.get()
+    if doc.exists:
+        return doc.to_dict()
+    else:
+        return None
+
+# 更新数据
+def update_data():
+    doc_ref = db.collection("users").document("user_id")
+    doc_ref.update({
+        "age": 26
+    })
+
+# 删除数据
+def delete_data():
+    doc_ref = db.collection("users").document("user_id")
+    doc_ref.delete()
+
+# Streamlit 界面
+st.title("Firebase Firestore with Streamlit")
+
+if st.button("Create Data"):
+    create_data()
+    st.success("Data created")
+
+if st.button("Read Data"):
+    data = read_data()
+    if data:
+        st.write(data)
+    else:
+        st.error("No data found")
+
+if st.button("Update Data"):
+    update_data()
+    st.success("Data updated")
+
+if st.button("Delete Data"):
+    delete_data()
+    st.success("Data deleted")
+    
 # Set the layout to wide
 st.set_page_config(layout="wide")
 st. title ("LNP formulation calculator")
