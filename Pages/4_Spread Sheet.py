@@ -3,67 +3,30 @@ import pandas as pd
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-# 初始化 Firebase 应用
-cred = credentials.Certificate("path/to/your/serviceAccountKey.json")
-firebase_admin.initialize_app(cred)
+# Initialize Firebase
+def init_firebase():
+    if not firebase_admin._apps:
+        cred = credentials.Certificate("/Users/yuexu/Documents/GitHub/SDL-York/sdl-lnp-firebase-adminsdk-5tax5-75f56b0882.json")
+        firebase_admin.initialize_app(cred)
+    return firestore.client()
 
-# 初始化 Firestore 客户端
-db = firestore.client()
-# 创建数据
-def create_data():
-    doc_ref = db.collection("users").document("user_id")
-    doc_ref.set({
-        "name": "John Doe",
-        "age": 25,
-        "email": "john.doe@example.com"
-    })
+db = init_firebase()
 
-# 读取数据
-def read_data():
-    doc_ref = db.collection("users").document("user_id")
-    doc = doc_ref.get()
-    if doc.exists:
-        return doc.to_dict()
-    else:
-        return None
-
-# 更新数据
-def update_data():
-    doc_ref = db.collection("users").document("user_id")
-    doc_ref.update({
-        "age": 26
-    })
-
-# 删除数据
-def delete_data():
-    doc_ref = db.collection("users").document("user_id")
-    doc_ref.delete()
-
-# Streamlit 界面
-st.title("Firebase Firestore with Streamlit")
-
-if st.button("Create Data"):
-    create_data()
-    st.success("Data created")
-
-if st.button("Read Data"):
-    data = read_data()
-    if data:
-        st.write(data)
-    else:
-        st.error("No data found")
-
-if st.button("Update Data"):
-    update_data()
-    st.success("Data updated")
-
-if st.button("Delete Data"):
-    delete_data()
-    st.success("Data deleted")
-    
 # Set the layout to wide
 st.set_page_config(layout="wide")
 st. title ("LNP formulation calculator")
+
+def log_to_firebase(data):
+    """
+    Log the data to Firebase Firestore
+    """
+    try:
+        doc_ref = db.collection("lnp_logs").document()
+        doc_ref.set(data)
+        st.success("Data logged to Firebase successfully!")
+    except Exception as e:
+        st.error(f"Failed to log data to Firebase: {e}")
+
 
 def make_lnp_formulation(rna_scale, rna_stock_concentration, ionizable_lipid_to_rna_ratio, aqueous_to_ethanol_ratio, ionizable_lipid_mw, helper_lipid_mw, cholesterol_mw, pegdmg2000_mw, ionizable_lipid_concentration, helper_lipid_concentration, cholesterol_concentration, pegdmg2000_concentration, ionizable_lipid_ratio, helper_lipid_ratio, cholesterol_ratio, pegdmg2000_ratio):
     """
@@ -210,6 +173,34 @@ def main():
         )
         st.session_state.result_df = result_df
         st.session_state.volumes = volumes
+        
+        # Convert DataFrame to list of dictionaries
+        result_dict = result_df.to_dict('records')
+
+        # Log data to Firebase
+        log_data = {
+            "rna_scale": rna_scale,
+            "rna_stock_concentration": rna_stock_concentration,
+            "ionizable_lipid_to_rna_ratio": ionizable_lipid_to_rna_ratio,
+            "aqueous_to_ethanol_ratio": aqueous_to_ethanol_ratio,
+            "ionizable_lipid_mw": ionizable_lipid_mw,
+            "helper_lipid_mw": helper_lipid_mw,
+            "cholesterol_mw": cholesterol_mw,
+            "pegdmg2000_mw": pegdmg2000_mw,
+            "ionizable_lipid_concentration": ionizable_lipid_concentration,
+            "helper_lipid_concentration": helper_lipid_concentration,
+            "cholesterol_concentration": cholesterol_concentration,
+            "pegdmg2000_concentration": pegdmg2000_concentration,
+            "ionizable_lipid_ratio": ionizable_lipid_ratio,
+            "helper_lipid_ratio": helper_lipid_ratio,
+            "cholesterol_ratio": cholesterol_ratio,
+            "pegdmg2000_ratio": pegdmg2000_ratio,
+            "result_df": result_dict,
+            "volumes": volumes
+        }
+
+        log_to_firebase(log_data)
+        
         # 初始化复选框状态
         st.session_state.checkboxes_col2 = {index: False for index in result_df.index}
         st.session_state.checkboxes_col4 = {index: False for index in result_df.index}
