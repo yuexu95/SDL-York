@@ -104,7 +104,6 @@ def main():
         for server_name in BASE_URLS.keys():
             server_color = server_colors[server_name]
             st.markdown(f'<div class="server-header" style="color: {server_color}; font-weight: bold;">{server_name}</div>', unsafe_allow_html=True)
-            st.write(f"Current number of plates: {st.session_state['plates_number'][server_name]}")
             
             button_col1, button_col2 = st.columns(2)
             

@@ -1,5 +1,8 @@
 import streamlit as st
 import pandas as pd
+import firebase_admin
+from firebase_admin import credentials, firestore
+
 # Set the layout to wide
 st.set_page_config(layout="wide")
 st. title ("LNP formulation calculator")
