@@ -1,0 +1,36 @@
+[clamp]
+host = '192.168.1.30'
+port = 9006
+# this is wait time in hrs
+
+
+[incubator]
+wait_time = 8
+host = '192.168.1.30'
+port = 9007
+# this is wait time in hrs
+
+[liquid_sampler]
+host = '192.168.1.147'
+port = 8000
+[feeder0]
+# feeder names have to be "feeder" and a number
+#host = 'raspberrypi2feeder.local'
+port = 8000
+host = '192.168.1.30'
+
+[feeder1]
+#host = 'raspberrypi2feeder.local'
+port = 9001
+host = '192.168.1.30'
+
+[feeder2]
+#host = 'raspberrypi2feeder.local'
+port = 9002
+host = '192.168.1.30'
+
+
+[feeder3]
+#host = 'raspberrypi2feeder.local'
+port = 9003
+host = '192.168.1.30'
