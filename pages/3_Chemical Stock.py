@@ -6,7 +6,7 @@ from mitosheet.streamlit.v1.spreadsheet import _get_mito_backend
 
 @st.cache_data
 def get_tesla_data():
-    df = pd.read_csv('/Users/yuexu/Documents/GitHub/SDL-York/Demo_mapping_sampler.csv')
+    df = pd.read_csv('./Demo_mapping_sampler.csv')
     df = df.drop(0)
     df['Volume'] = df['Volume'].astype(float)
     return df
