@@ -34,3 +34,7 @@ host = '192.168.1.30'
 #host = 'raspberrypi2feeder.local'
 port = 9003
 host = '192.168.1.30'
+
+[plate_reader]
+host = '192.168.1.254'
+port = 5000
