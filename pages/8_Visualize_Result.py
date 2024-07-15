@@ -34,19 +34,26 @@ if entry_id:
 
             heatmap_data = np.zeros((len(rows), len(columns)))
             hovertext = np.empty((len(rows), len(columns)), dtype=object)
+            ctrl = np.log2((data[key]["A1"]['reading'] + data[key]["B1"]['reading']) / 2 )
 
             for well in wells:
                 row_idx = rows.index(well[0])
                 col_idx = columns.index(int(well[1:]))
                 heatmap_data[row_idx, col_idx] = data[key][well]['reading']
+                
 
                 components = data['0'][well]['components']
                 hovertext[row_idx, col_idx] = (f"Well: {well}<br>Reading: {data[key][well]['reading']}"
+                                               f"<br>log(reading): {round(np.log2(data[key][well]['reading']) - ctrl, 2)}"
                                             f"<br>Amines: {components['amines']}<br>Isocyanide: {components['isocyanide']}"
                                             f"<br>Lipid Aldehyde: {components['lipid_aldehyde']}"
                                             f"<br>Lipid Carboxylic Acid: {components['lipid_carboxylic_acid']}"
                                             )
 
+
+            # blank
+            # log transform the data
+            heatmap_data = np.log2(heatmap_data) - ctrl
             fig = go.Figure(data=go.Heatmap(
                 z=heatmap_data,
                 x=[str(col) for col in columns],
