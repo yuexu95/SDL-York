@@ -44,7 +44,7 @@ if entry_id:
 
                 components = data['0'][well]['components']
                 hovertext[row_idx, col_idx] = (f"Well: {well}<br>Reading: {data[key][well]['reading']}"
-                                               f"<br>log(reading): {round(np.log2(data[key][well]['reading']) - ctrl, 2)}"
+                                            f"<br>log(reading): {round(np.log2(heatmap_data[row_idx, col_idx]) - ctrl, 2)}"
                                             f"<br>Amines: {components['amines']}<br>Isocyanide: {components['isocyanide']}"
                                             f"<br>Lipid Aldehyde: {components['lipid_aldehyde']}"
                                             f"<br>Lipid Carboxylic Acid: {components['lipid_carboxylic_acid']}"
