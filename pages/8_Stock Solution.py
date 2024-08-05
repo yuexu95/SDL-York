@@ -1,6 +1,10 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.patches import Circle
+import numpy as np
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
 
 # Sample data
 data = [
@@ -101,33 +105,84 @@ data = [
     {"location": "G12", "name": "None", "volume": None, "lipid_structure": {"amines": None, "isocyanide": None, "lipid_carboxylic_acid": None, "lipid_aldehyde": None}},
     {"location": "H12", "name": "None", "volume": None, "lipid_structure": {"amines": None, "isocyanide": None, "lipid_carboxylic_acid": None, "lipid_aldehyde": None}}
 ]
+
+# Ensure all wells are represented
+rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+cols = list(range(1, 13))
+all_wells = [f"{r}{c}" for r in rows for c in cols]
+
+# Fill missing wells with default values
+filled_data = {well: {"location": well, "name": "None", "volume": 0, "lipid_structure": {"amines": None, "isocyanide": None, "lipid_carboxylic_acid": None, "lipid_aldehyde": None}} for well in all_wells}
+
+for entry in data:
+    filled_data[entry["location"]] = entry
+
 # Convert to DataFrame
-df = pd.DataFrame(data)
-df.fillna('None', inplace=True)  # Handle missing data by filling 'None'
+df = pd.DataFrame(list(filled_data.values()))
+
+# Handle missing volumes by filling them with 0 for visualization
+df['volume'] = df['volume'].fillna(0)
+
+# Determine min and max volume for color normalization
+min_volume = df['volume'].min()
+max_volume = df['volume'].max()
+
+# Define a colormap using the correct method
+cmap = cm.get_cmap('coolwarm') if hasattr(cm, 'get_cmap') else plt.get_cmap('coolwarm')
+norm = mcolors.Normalize(vmin=min_volume, vmax=max_volume)
 
 # Sidebar for updating volumes
 with st.sidebar:
     st.title("Update Stock Solutions")
     location = st.selectbox("Select Location", options=df['location'].unique())
-    volume = st.number_input("Volume", value=0)
+    volume = st.number_input("Volume Change", value=0)
 
     if st.button("Update Volume"):
-        if df.loc[df['location'] == location, 'volume'].dtype == 'O':  # Check if the current volume is a string (None)
-            df.loc[df['location'] == location, 'volume'] = 0  # Initialize with zero if previously 'None'
+        # Update the volume
         df.loc[df['location'] == location, 'volume'] += volume
         st.success(f"Updated volume at {location}")
+        
+        # Recalculate color normalization with the updated data
+        min_volume = df['volume'].min()
+        max_volume = df['volume'].max()
+        norm = mcolors.Normalize(vmin=min_volume, vmax=max_volume)
+        
+        # Redraw the plot to reflect changes
+        fig, ax = plt.subplots(figsize=(12, 8))
+        for idx, row in df.iterrows():
+            row_idx = rows.index(row['location'][0])
+            col_idx = int(row['location'][1:]) - 1
+
+            # Determine color based on updated volume using colormap
+            color = cmap(norm(row['volume']))
+
+            # Plot circle (dot) for each well
+            circle = Circle((col_idx, row_idx), 0.3, color=color, alpha=0.6)
+            ax.add_patch(circle)
+
+            # Annotate the circle with the name and updated volume
+            ax.text(col_idx, row_idx, f"{row['name']}\nVol: {row['volume']}", ha='center', va='center', fontsize=8, color='black')
+
+        # Label the axes
+        ax.set_xticks(np.arange(len(cols)))
+        ax.set_xticklabels(cols)
+        ax.set_yticks(np.arange(len(rows)))
+        ax.set_yticklabels(rows)
+        ax.set_xlabel("Column")
+        ax.set_ylabel("Row")
+        ax.set_title("96-Well Plate Solution Volumes with Gradient Colors")
+
+        # Set the axis limits and aspect
+        ax.set_xlim(-0.5, len(cols) - 0.5)
+        ax.set_ylim(-0.5, len(rows) - 0.5)
+        ax.set_aspect('equal')
+
+        # Add grid lines
+        ax.grid(False)
+
+        # Show plot in Streamlit
+        st.pyplot(fig)
 
 # Main page display
-st.title("Stock Solution Management")
+st.title("96-Well Plate Stock Solution Management")
 st.dataframe(df)
-
-# Plotting the volumes
-fig, ax = plt.subplots()
-numeric_filter = df['volume'].apply(lambda x: isinstance(x, (int, float)))
-negative_volumes = df[numeric_filter]['volume'] < 0
-ax.bar(df[numeric_filter]['location'][negative_volumes], df[numeric_filter]['volume'][negative_volumes], color='red')
-ax.bar(df[numeric_filter]['location'][~negative_volumes], df[numeric_filter]['volume'][~negative_volumes], color='blue')
-ax.set_xlabel("Location")
-ax.set_ylabel("Volume")
-ax.set_title("Solution Volumes by Location")
-st.pyplot(fig)
