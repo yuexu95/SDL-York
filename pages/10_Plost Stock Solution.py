@@ -1,14 +1,16 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib.patches import Circle
-import matplotlib.colors as mcolors
-import matplotlib.cm as cm
 import numpy as np
+import plost
 
-# Sample data
-data = [
-    {"location": "A1", "name": "A1", "volume": -560.0, "lipid_structure": {"amines": "A1", "isocyanide": None, "lipid_carboxylic_acid": None, "lipid_aldehyde": None}},
+# Set the title and favicon that appear in the Browser's tab bar.
+st.set_page_config(
+    page_title='96-Well Plate Tracker',
+    page_icon=':test_tube:',  # This is an emoji shortcode. Could be a URL too.
+)
+
+initial_data = [
+    {"location": "A1", "name": "A1", "volume": 560.0, "lipid_structure": {"amines": "A1", "isocyanide": None, "lipid_carboxylic_acid": None, "lipid_aldehyde": None}},
     {"location": "B1", "name": "None", "volume": None, "lipid_structure": {"amines": None, "isocyanide": None, "lipid_carboxylic_acid": None, "lipid_aldehyde": None}},
     {"location": "C1", "name": "None", "volume": None, "lipid_structure": {"amines": None, "isocyanide": None, "lipid_carboxylic_acid": None, "lipid_aldehyde": None}},
     {"location": "D1", "name": "None", "volume": None, "lipid_structure": {"amines": None, "isocyanide": None, "lipid_carboxylic_acid": None, "lipid_aldehyde": None}},
@@ -106,7 +108,7 @@ data = [
     {"location": "H12", "name": "None", "volume": None, "lipid_structure": {"amines": None, "isocyanide": None, "lipid_carboxylic_acid": None, "lipid_aldehyde": None}}
 ]
 
-# Ensure all wells are represented
+# Ensure all 96 wells are initialized
 rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 cols = list(range(1, 13))
 all_wells = [f"{r}{c}" for r in rows for c in cols]
@@ -116,89 +118,98 @@ filled_data = {
     well: {
         "location": well,
         "name": "None",
-        "volume": 0,
-        "lipid_structure": {
-            "amines": None,
-            "isocyanide": None,
-            "lipid_carboxylic_acid": None,
-            "lipid_aldehyde": None
-        }
+        "volume": 0.0,
+        "lipid_structure": "None"
     }
     for well in all_wells
 }
 
-# Update filled_data with actual data
-for entry in data:
+# Update with initial data
+for entry in initial_data:
     filled_data[entry["location"]] = entry
 
-# Convert to DataFrame
+# Convert filled data to DataFrame
 df = pd.DataFrame(list(filled_data.values()))
 
-# Handle missing volumes by filling them with 0 for visualization
-df['volume'] = df['volume'].fillna(0)
+# Add row and column indices
+df['row'] = df['location'].str.extract('([A-H])', expand=False)
+df['column'] = df['location'].str.extract('(\d+)', expand=False).astype(int)
 
-# Use session state to persist data
-if "df" not in st.session_state:
-    st.session_state.df = df.copy()
+# Map rows to numeric values for plotting
+row_mapping = {row: i + 1 for i, row in enumerate(rows)}
+df['row_num'] = df['row'].map(row_mapping)
 
-# Define a colormap using the correct method
-min_volume = st.session_state.df['volume'].min()
-max_volume = st.session_state.df['volume'].max()
-cmap = plt.get_cmap('coolwarm')
-norm = mcolors.Normalize(vmin=min_volume, vmax=max_volume)
+# Identify negative volumes and prepare reminders
+negative_wells = df[df['volume'] < 0]
+if not negative_wells.empty:
+    st.error("Warning: The following wells have negative volumes and should be checked:")
+    for index, row in negative_wells.iterrows():
+        st.warning(f"Well {row['location']} has a negative volume of {row['volume']}.")
+
+# Handle NaN and negative volumes for visualization
+df['volume'] = df['volume'].fillna(0)  # Replace NaNs with 0
+df['size'] = df['volume'].apply(lambda x: max(x, 0))  # Ensure size is non-negative
+
+# -----------------------------------------------------------------------------
+# Draw the actual page, starting with the inventory table.
+
+st.title(':test_tube: 96-Well Plate Tracker')
+st.write("**Welcome to the 96-Well Plate Tracker!**")
+st.info('''
+    Use the table below to add, remove, and edit wells.
+    And don't forget to commit your changes when you're done.
+''')
+
+# Display data with editable table
+edited_df = st.data_editor(
+    df,
+    disabled=['location', 'row', 'column'],  # Don't allow editing the 'location', 'row', 'column' columns.
+    num_rows='dynamic',  # Allow appending/deleting rows.
+    key='well_table'
+)
+
+# Check for uncommitted changes
+has_uncommitted_changes = any(len(v) for v in st.session_state.well_table.values())
+
+# Update the in-memory data with edited values
+if st.button('Commit changes', disabled=not has_uncommitted_changes):
+    df.update(edited_df)
+    st.success('Changes committed successfully!')
+
+# -----------------------------------------------------------------------------
+# 2D Histogram Plot of 96-Well Plate
+
+st.markdown('---')
+st.subheader('2D Visualization of Well Volumes Using plost.xy_hist')
+
+# Prepare the data for plost.xy_hist
+df['row_label'] = df['row'].map(row_mapping)  # Numeric row mapping for plost
+df['column_label'] = df['column']  # Column numbers already numeric
+
+# Create a 2D histogram plot using plost
+plost.xy_hist(
+    data=df,
+    x='column_label',
+    y='row_label',
+    x_bin=dict(maxbins=12),  # Ensure correct binning for 12 columns
+    y_bin=dict(maxbins=8),   # Ensure correct binning for 8 rows
+    color='volume',          # Use volume for color intensity
+    height=400,
+)
+
+st.caption('Each cell represents a well, with color intensity representing the volume.')
+
+# -----------------------------------------------------------------------------
+st.subheader('Volume Updates')
 
 # Sidebar for updating volumes
-st.sidebar.title("Update Stock Solutions")
-location = st.sidebar.selectbox("Select Location", options=st.session_state.df['location'].unique())
-volume_change = st.sidebar.number_input("Volume Change", value=0.0)
+location = st.selectbox("Select Well Location", options=df['location'].unique())
+volume_change = st.number_input("Volume Change", value=0.0)
 
-if st.sidebar.button("Update Volume"):
-    # Find the row to update
-    current_volume = st.session_state.df.loc[st.session_state.df['location'] == location, 'volume'].values[0]
-    st.session_state.df.loc[st.session_state.df['location'] == location, 'volume'] = current_volume + volume_change
-    st.sidebar.success(f"Updated volume at {location}")
-    
-    # Recalculate color normalization with the updated data
-    min_volume = st.session_state.df['volume'].min()
-    max_volume = st.session_state.df['volume'].max()
-    norm = mcolors.Normalize(vmin=min_volume, vmax=max_volume)
+if st.button("Update Volume"):
+    # Update the volume in the DataFrame
+    df.loc[df['location'] == location, 'volume'] += volume_change
+    st.success(f"Volume at {location} updated to {df.loc[df['location'] == location, 'volume'].values[0]:.2f}")
 
-# Main page display
-st.title("96-Well Plate Stock Solution Management")
-
-# Redraw the plot to reflect changes
-fig, ax = plt.subplots(figsize=(12, 8))
-for idx, row in st.session_state.df.iterrows():
-    row_idx = rows.index(row['location'][0])
-    col_idx = int(row['location'][1:]) - 1
-
-    # Determine color based on updated volume using colormap
-    color = cmap(norm(row['volume']))
-
-    # Plot circle (dot) for each well
-    circle = Circle((col_idx, row_idx), 0.3, color=color, alpha=0.6)
-    ax.add_patch(circle)
-
-    # Annotate the circle with the name and updated volume
-    ax.text(col_idx, row_idx, f"{row['name']}\n {row['volume']:.1f}", ha='center', va='center', fontsize=8, color='black')
-
-# Label the axes
-ax.set_xticks(np.arange(len(cols)))
-ax.set_xticklabels(cols)
-ax.set_yticks(np.arange(len(rows)))
-ax.set_yticklabels(rows)
-ax.set_xlabel("Column")
-ax.set_ylabel("Row")
-ax.set_title("96-Well Plate Solution Volumes with Gradient Colors")
-
-# Set the axis limits and aspect
-ax.set_xlim(-0.5, len(cols) - 0.5)
-ax.set_ylim(-0.5, len(rows) - 0.5)
-ax.set_aspect('equal')
-
-# Add grid lines
-ax.grid(False)
-
-# Show plot in Streamlit
-st.pyplot(fig)
-st.dataframe(st.session_state.df)
+# Display updated data
+st.write(df)
