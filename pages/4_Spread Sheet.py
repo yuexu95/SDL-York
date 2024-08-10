@@ -6,7 +6,7 @@ from firebase_admin import credentials, firestore
 # Initialize Firebase
 def init_firebase():
     if not firebase_admin._apps:
-        cred = credentials.Certificate("/Users/yuexu/Documents/GitHub/SDL-York/sdl-lnp-firebase-adminsdk-5tax5-75f56b0882.json")
+        cred = credentials.Certificate("./sdl-lnp-firebase-adminsdk-5tax5-75f56b0882.json")
         firebase_admin.initialize_app(cred)
     return firestore.client()
 
