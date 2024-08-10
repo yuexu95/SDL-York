@@ -25,5 +25,6 @@ def example() -> None:
         color_name="green-100",
     )
 
+
 if __name__ == "__main__":
     example()

@@ -3,11 +3,12 @@ import requests
 import toml
 
 # Load configuration from TOML file
-config = toml.load('services_config.toml')
+config = toml.load("services_config.toml")
+
 
 def check_service_health(host, port):
     try:
-        response = requests.get(f'http://{host}:{port}/health')
+        response = requests.get(f"http://{host}:{port}/health")
         if response.status_code == 200:
             return response.json().get("is_healthy", False)
         else:
@@ -15,15 +16,16 @@ def check_service_health(host, port):
     except Exception as e:
         return False
 
+
 st.title("API Services Health Check")
 
 status = {}
 
-if st.button('Check All Services'):
+if st.button("Check All Services"):
     for service_name, service_info in config.items():
-        host = service_info.get('host')
-        port = service_info.get('port')
-        with st.spinner(f'Checking {service_name}...'):
+        host = service_info.get("host")
+        port = service_info.get("port")
+        with st.spinner(f"Checking {service_name}..."):
             is_healthy = check_service_health(host, port)
             status[service_name] = is_healthy
 
