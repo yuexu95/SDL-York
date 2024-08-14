@@ -75,6 +75,7 @@ def example() -> None:
         ],
         "incubator": ["put four new plates of cells in incubator"],
         "bin": ["Empty the bin"],
+        "shaker": ["Ensure latch is open"],
         "camera": ["Check the camera"],
     }
 
