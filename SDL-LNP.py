@@ -57,7 +57,7 @@ def example() -> None:
     # Define steps and descriptions
     steps = {
         "feeders": [
-            "≥ 8 300 ul racks in feeder_0",
+            "≥ 6 300 ul racks in feeder_0",
             "≥ 10 20 ul racks in feeder_1",
             "≥ 4 DeepWells in feeder_2",
             "≥ 4 reading plates in feeder_3",
