@@ -101,6 +101,18 @@ def example() -> None:
     selected_job_id = st.selectbox("Select a Job ID", job_ids, index=None)
 
     if selected_job_id:
+        # get the refillment data from the proposal
+        usage_and_refills_data_list = data[job_ids.index(selected_job_id)].get("usage_and_refills", {})
+        refill_list = [item.get("refill") for item in usage_and_refills_data_list]
+        merged_refill = {}
+        for refill in refill_list:
+            for key, value in refill.items():
+                if key in merged_refill:
+                    merged_refill[key] += value
+                else:
+                    merged_refill[key] = value
+        
+        
         # Initialize checkbox states
         checkbox_states = {step: [False] * len(tasks) for step, tasks in steps.items()}
 
@@ -113,6 +125,37 @@ def example() -> None:
             df = convert_target_to_dataframe(exp_data.get("targets", []))
             st.dataframe(df, use_container_width=True)
 
+        # Display the refillment data as checkbox in the table
+        st.subheader("Refillment Data")
+        st.write("Refillment Data from the proposal, check the box to confirm the refillment")
+        
+        # cols: well name (key), volume (value), checked (new, bool)
+        well_name, volume, checked= [], [], []
+        for key, value in merged_refill.items():
+            well_name.append(key)
+            volume.append(value)
+            checked.append(False)
+        refill_df = pd.DataFrame(
+            {
+                "Well Name": well_name,
+                "Volume": volume,
+                "Confirm": checked
+            }
+        )        
+        st.data_editor(
+            refill_df,
+            column_config={
+                "Confirm": st.column_config.CheckboxColumn(
+                    "Check",
+                    help="Confirm the refillment",
+                    default=False,
+                )
+            },
+            disabled=["widgets"],
+            hide_index=True,
+    )
+        
+        
         # Display checkboxes and update states
         for step, tasks in steps.items():
             st.header(step.capitalize())
@@ -122,8 +165,8 @@ def example() -> None:
         # Check if all steps are completed
         all_steps_completed = all(all(state) for state in checkbox_states.values())
 
-        if all_steps_completed:
-            # Display activation buttons only if all checkboxes are checked
+        if all_steps_completed and (refill_df["Confirm"].all() or refill_df.empty):
+            # Display activation buttons only if all checkboxes are checked and all refillments are confirmed (if any)
             st.header("Actions")
 
             post_base_url = f"{base_url}/start"
