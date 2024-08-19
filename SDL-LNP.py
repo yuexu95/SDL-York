@@ -177,7 +177,9 @@ def example() -> None:
 
         all_steps_completed = all(all(state) for state in checkbox_states.values())
 
-        all_refill_confirmed = edited_df["Confirm"].all()
+        all_refill_confirmed = (
+            True if len(refill_df) == 0 else edited_df["Confirm"].all()
+        )
 
         if all_steps_completed and all_refill_confirmed:
             # Display activation buttons only if all checkboxes are checked and all refillments are confirmed (if any)
