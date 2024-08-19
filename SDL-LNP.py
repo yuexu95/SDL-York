@@ -142,7 +142,7 @@ def example() -> None:
                 "Confirm": checked
             }
         )        
-        st.data_editor(
+        edited_df = st.data_editor(
             refill_df,
             column_config={
                 "Confirm": st.column_config.CheckboxColumn(
@@ -156,16 +156,30 @@ def example() -> None:
     )
         
         
+        
         # Display checkboxes and update states
         for step, tasks in steps.items():
             st.header(step.capitalize())
             for i, task in enumerate(tasks):
                 checkbox_states[step][i] = st.checkbox(task, key=f"{step}_{i}")
 
-        # Check if all steps are completed
-        all_steps_completed = all(all(state) for state in checkbox_states.values())
+        # have a button to check all
+        st.subheader("Check All")
+        if st.button("Check All"):
+            for step, tasks in steps.items():
+                for i, task in enumerate(tasks):
+                    checkbox_states[step][i] = True
+            for i in range(len(refill_df)):
+                edited_df.loc[i, "Confirm"] = True
 
-        if all_steps_completed and (refill_df["Confirm"].all() or refill_df.empty):
+
+        # Check if all steps are completed and refillments are confirmed
+        
+        all_steps_completed = all(all(state) for state in checkbox_states.values())
+        
+        all_refill_confirmed = edited_df["Confirm"].all()
+        
+        if all_steps_completed and all_refill_confirmed:
             # Display activation buttons only if all checkboxes are checked and all refillments are confirmed (if any)
             st.header("Actions")
 
