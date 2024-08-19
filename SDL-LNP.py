@@ -128,31 +128,35 @@ def example() -> None:
 
         # Display the refillment data as checkbox in the table
         st.subheader("Refillment Data")
-        st.write(
-            "Refillment Data from the proposal, check the box to confirm the refillment"
-        )
+        if len(merged_refill) > 0:
+            st.write(
+                "Refillment Data from the proposal, check the box to confirm the refillment"
+            )
 
-        # cols: well name (key), volume (value), checked (new, bool)
-        well_name, volume, checked = [], [], []
-        for key, value in merged_refill.items():
-            well_name.append(key)
-            volume.append(value)
-            checked.append(False)
-        refill_df = pd.DataFrame(
-            {"Well Name": well_name, "Volume": volume, "Confirm": checked}
-        )
-        edited_df = st.data_editor(
-            refill_df,
-            column_config={
-                "Confirm": st.column_config.CheckboxColumn(
-                    "Check",
-                    help="Confirm the refillment",
-                    default=False,
-                )
-            },
-            disabled=["widgets"],
-            hide_index=True,
-        )
+            # cols: well name (key), volume (value), checked (new, bool)
+            well_name, volume, checked = [], [], []
+            for key, value in merged_refill.items():
+                well_name.append(key)
+                volume.append(value)
+                checked.append(False)
+            refill_df = pd.DataFrame(
+                {"Well Name": well_name, "Volume": volume, "Confirm": checked}
+            )
+            edited_df = st.data_editor(
+                refill_df,
+                column_config={
+                    "Confirm": st.column_config.CheckboxColumn(
+                        "Check",
+                        help="Confirm the refillment",
+                        default=False,
+                    )
+                },
+                disabled=["widgets"],
+                hide_index=True,
+            )
+        else:
+            st.write("No refillment needed for this job.")
+            refill_df = pd.DataFrame()
 
         # Display checkboxes and update states
         for step, tasks in steps.items():
