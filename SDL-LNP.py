@@ -73,7 +73,11 @@ def example() -> None:
             "resealing the mat",
             "put it in the opentron 1 pos 6",
         ],
-        "incubator": ["put four new plates of cells in incubator"],
+        "incubator": [
+            "put four new plates of cells in incubator",
+            "Check the water level",
+        ],
+        
         "bin": ["Empty the bin"],
         "shaker": ["Ensure latch is open"],
         "camera": ["Check the camera"],
