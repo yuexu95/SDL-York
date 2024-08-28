@@ -59,7 +59,7 @@ def example() -> None:
         "feeders": [
             "≥ 6 300 ul racks in feeder_0",
             "≥ 10 20 ul racks in feeder_1",
-            "≥ 4 DeepWells in feeder_2",
+            "≥ 4 PCR DeepWells in feeder_2",
             "≥ 4 reading plates in feeder_3",
         ],
         "stock_solution": [
@@ -77,10 +77,9 @@ def example() -> None:
             "put four new plates of cells in incubator",
             "Check the water level",
         ],
-
         "bin": ["Empty the bin"],
-        "shaker": ["Ensure latch is open"],
         "camera": ["Check the camera"],
+        "health_check": ["Check the health of the system"],
     }
 
     # Step 1: Select Job ID
