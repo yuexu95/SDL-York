@@ -11,18 +11,21 @@ def get_entries():
     # Placeholder for the method that fetches available entry IDs
     # Replace with the actual implementation
     request_url = base_url + "/entries"
-    return [entry["id"] for entry in requests.get(request_url).json()]
+    return requests.get(request_url).json()
 
 
 st.title("96-well Plate Readings Heatmap")
 
 # Get available entry IDs
-entry_ids = get_entries()
+entries = get_entries()
 
-with st.expander("Select Entry ID"):
-    entry_id = st.selectbox("Choose an entry ID:", entry_ids)
+entry = st.selectbox("Select an entry ID:", entries)
+entry_id = entry["id"]
+entry_date = entry["last_updated"]
 
 if entry_id:
+    st.markdown(f"## {entry_date}")
+
     request_url = base_url + f"/entry/{entry_id}/readings"
     response = requests.get(request_url)
     if response.status_code == 200:
