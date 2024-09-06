@@ -25,14 +25,12 @@ def get_entry_readings(entry_id):
         st.error("Failed to fetch data. Please check the entry ID.")
 
 
-@st.cache_data
 def log_and_norm_reading(readings) -> Dict[str, Dict]:
     """loop and call the _log_and_norm_reading function"""
     return {key: _log_and_norm_reading(value) for key, value in readings.items()}
 
 
-@st.cache_data
-def _log_and_norm_reading(reading):
+def _log_and_norm_reading(reading, clip_negative=True):
     """
     Normalize the readings by calling the log and norm function. Essentially, it logs the readings and normalizes them by the control well readings. The first two wells that have none components are the control wells. The others of none components are the benchmark lipids of MC3. The rest are the experimental wells.
 
@@ -44,6 +42,7 @@ def _log_and_norm_reading(reading):
             "A2": {"reading": 0.0, "components": {...}},
             ...
         }
+        clip_negative (bool): Whether to clip the negative values to zero.
 
     Returns:
         dict: A dictionary containing the normalized readings for each well.
@@ -85,11 +84,13 @@ def _log_and_norm_reading(reading):
     ctrl = np.mean([log_reading[key]["reading"] for key in empty_wells])
     for key in log_reading.keys():
         log_reading[key]["reading"] = log_reading[key]["reading"] - ctrl
+        if clip_negative:
+            log_reading[key]["reading"] = max(log_reading[key]["reading"], 0)
 
     return log_reading
 
 
-def qc_entry_readings(nomalized_readings, threshold=2):
+def qc_entry_readings(nomalized_readings, threshold=3):
     """
     Quality control the readings for each well in the 96-well plate. Each entry can have readings of maximum four replicates. The first two are two repeated readings of one well, and the other two are two repeated readings of another well. Sometimes there are only two replicates, then the third and fourth readings are missing.
 
@@ -135,26 +136,33 @@ def qc_entry_readings(nomalized_readings, threshold=2):
                 }
             qc_data[well]["reading"].append(reading["reading"])
 
+    def _process_data(data0, data1, threshold, message_prefix=""):
+        if abs(data0 - data1) < threshold:
+            return np.mean([data0, data1])
+        elif max(data0, data1) > 7:
+            return max(data0, data1)
+        else:
+            st.write(
+                f"{message_prefix} The difference between the two readings ({data0:.2f},{data1:.2f}) is larger than {threshold}."
+            )
+            return np.nan
+
     for well, data in qc_data.items():
         if len(data["reading"]) == 1:
             qc_data[well]["reading"] = data["reading"][0]
         elif len(data["reading"]) == 2:
             data0, data1 = data["reading"]
-            if abs(data0 - data1) < threshold:
-                qc_data[well]["reading"] = np.mean(data["reading"])
-            else:
-                qc_data[well]["reading"] = np.nan
+            qc_data[well]["reading"] = _process_data(
+                data0, data1, threshold, f"Replicates of {well}:"
+            )
         elif len(data["reading"]) == 4:
             data0, data1, data2, data3 = data["reading"]
-            if abs(data0 - data1) < threshold:
-                reading1 = np.mean(data["reading"][:2])
-            else:
-                reading1 = np.nan
-
-            if abs(data2 - data3) < threshold:
-                reading2 = np.mean(data["reading"][2:])
-            else:
-                reading2 = np.nan
+            reading1 = _process_data(
+                data0, data1, threshold, f"Replicates #0,1 of well {well}:"
+            )
+            reading2 = _process_data(
+                data2, data3, threshold, f"Replicates #2,3 of well {well}:"
+            )
 
             qc_data[well]["reading"] = max(reading1, reading2)
         else:
@@ -233,6 +241,7 @@ if entry_id:
     st.markdown(f"## {entry_date}")
 
     data = get_entry_readings(entry_id)
+    normalized_data = log_and_norm_reading(data)
 
     # Extracting readings and hover text
     for key in data.keys():
@@ -242,27 +251,27 @@ if entry_id:
 
         heatmap_data = np.zeros((len(rows), len(columns)))
         hovertext = np.empty((len(rows), len(columns)), dtype=object)
-        ctrl = (
-            np.log2(data[key]["A1"]["reading"]) + np.log2(data[key]["B1"]["reading"])
-        ) / 2
 
         for well in wells:
             row_idx = rows.index(well[0])
             col_idx = columns.index(int(well[1:]))
-            heatmap_data[row_idx, col_idx] = data[key][well]["reading"]
+            heatmap_data[row_idx, col_idx] = normalized_data[key][well]["reading"]
 
             components = data["0"][well]["components"]
             hovertext[row_idx, col_idx] = (
-                f"Well: {well}<br>Reading: {data[key][well]['reading']}"
-                f"<br>log(reading): {round(np.log2(heatmap_data[row_idx, col_idx]) - ctrl, 2)}"
-                f"<br>Amines: {components['amines']}<br>Isocyanide: {components['isocyanide']}"
-                f"<br>Lipid Aldehyde: {components['lipid_aldehyde']}"
-                f"<br>Lipid Carboxylic Acid: {components['lipid_carboxylic_acid']}"
+                f"Well: {well}<br>log(reading): {heatmap_data[row_idx, col_idx]:.2f}"
+                f"<br>Reading: {data[key][well]['reading']}"
+                + (
+                    f"<br>Amines: {components['amines']}<br>Isocyanide: {components['isocyanide']}"
+                    f"<br>Aldehyde: {components['lipid_aldehyde']}"
+                    f"<br>Carboxylic Acid: {components['lipid_carboxylic_acid']}"
+                    if normalized_data[key][well]["type"] == "experimental"
+                    else f"<br>Type: {normalized_data[key][well]['type']}"
+                )
             )
 
         # blank
         # log transform the data
-        heatmap_data = np.log2(heatmap_data) - ctrl
         fig = go.Figure(
             data=go.Heatmap(
                 z=heatmap_data,
