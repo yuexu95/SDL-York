@@ -14,11 +14,157 @@ def get_entries():
     return requests.get(request_url).json()
 
 
+def get_entry_readings(entry_id):
+    request_url = base_url + f"/entry/{entry_id}/readings"
+    response = requests.get(request_url)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        st.error("Failed to fetch data. Please check the entry ID.")
+
+
+def log_and_norm_reading(readings):
+    """loop and call the _log_and_norm_reading function"""
+    return {key: _log_and_norm_reading(value) for key, value in readings.items()}
+
+
+def _log_and_norm_reading(reading):
+    """
+    Normalize the readings by calling the log and norm function. Essentially, it logs the readings and normalizes them by the control well readings. The first two wells that have none components are the control wells. The others of none components are the benchmark lipids of MC3. The rest are the experimental wells.
+
+    Args:
+        readings (dict): A dictionary containing the readings for each well.
+        example:
+        {
+            "A1": {"reading": 0.0, "components": {...}},
+            "A2": {"reading": 0.0, "components": {...}},
+            ...
+        }
+
+    Returns:
+        dict: A dictionary containing the normalized readings for each well.
+        example:
+        {
+            "A1": {"reading": 0.0, "components": {...}, "type": "control"},
+            "A2": {"reading": 0.0, "components": {...}, "type": "mc3"},
+            ...
+        }
+    """
+    # log transform the data
+    log_reading = {}
+    for key, value in reading.items():
+        log_reading[key] = {
+            "reading": np.log2(value["reading"]),
+            "components": value["components"],
+        }
+
+    # find all wells that have none components
+    empty_and_positive_control_wells = []
+    for key, value in reading.items():
+        if value["components"]["amines"] is None:
+            empty_and_positive_control_wells.append(key)
+    empty_wells = empty_and_positive_control_wells[:2]
+    positive_control_wells = empty_and_positive_control_wells[2:]
+    assert empty_wells[0] == "A1"
+    assert empty_wells[1] == "B1"
+
+    # assign the type of the well
+    for key in log_reading.keys():
+        if key in empty_wells:
+            log_reading[key]["type"] = "control"
+        elif key in positive_control_wells:
+            log_reading[key]["type"] = "mc3"
+        else:
+            log_reading[key]["type"] = "experimental"
+
+    # normalize the data
+    ctrl = np.mean([log_reading[key]["reading"] for key in empty_wells])
+    for key in log_reading.keys():
+        log_reading[key]["reading"] = log_reading[key]["reading"] - ctrl
+
+    return log_reading
+
+
+def qc_entry_readings(nomalized_readings, threshold=2):
+    """
+    Quality control the readings for each well in the 96-well plate. Each entry can have readings of maximum four replicates. The first two are two repeated readings of one well, and the other two are two repeated readings of another well. Sometimes there are only two replicates, then the third and fourth readings are missing.
+
+    1. check whther the readings are trustworthy: if the difference between the two readings is less than `threshold`, then the readings are trustworthy.
+    2. If the readings are trustworthy, then calculate the average of the two readings as the final reading for that well.
+    3. Across wells for the same lipid structure, using the larger value as the final value.
+
+    Args:
+        readings (dict): A dictionary containing the readings for each well.
+        example:
+        {
+            "0": {
+                "A1": {"reading": 0.0, "components": {...}, "type": "control"},
+                "A2": {"reading": 0.0, "components": {...}, "type": "mc3"},
+                ...
+            },
+            "1": {
+                "A1": {"reading": 0.0, "components": {...}, "type": "control"},
+                "A2": {"reading": 0.0, "components": {...}, "type": "mc3"},
+                ...
+            },
+            ...
+        }
+        threshold (float): The threshold to determine whether the readings are trustworthy. Note this is in the log scale.
+
+    Returns:
+        dict: A dictionary containing the normalized readings for each well.
+        example:
+        {
+            "A1": {"reading": 0.0, "components": {...}, "type": "control"},
+            "A2": {"reading": 0.0, "components": {...}, "type": "mc3"},
+            ...
+        }
+    """
+    qc_data = {}
+    for key, readings in nomalized_readings.items():
+        for well, reading in readings.items():
+            if well not in qc_data:
+                qc_data[well] = {
+                    "reading": [],
+                    "components": reading["components"],
+                    "type": reading["type"],
+                }
+            qc_data[well]["reading"].append(reading["reading"])
+
+    for well, data in qc_data.items():
+        if len(data["reading"]) == 1:
+            qc_data[well]["reading"] = data["reading"][0]
+        elif len(data["reading"]) == 2:
+            if abs(data["reading"][0] - data["reading"][1]) < threshold:
+                qc_data[well]["reading"] = np.mean(data["reading"])
+            else:
+                qc_data[well]["reading"] = np.nan
+        elif len(data["reading"]) == 4:
+            if abs(data["reading"][0] - data["reading"][1]) < threshold:
+                reading1 = np.mean(data["reading"][:2])
+            else:
+                reading1 = np.nan
+
+            if abs(data["reading"][2] - data["reading"][3]) < threshold:
+                reading2 = np.mean(data["reading"][2:])
+            else:
+                reading2 = np.nan
+
+            qc_data[well]["reading"] = max(reading1, reading2)
+        else:
+            qc_data[well]["reading"] = np.nan
+
+    return qc_data
+
+
 st.title("96-well Plate Readings Heatmap")
 
 # Get available entry IDs
 entries = get_entries()
 
+# TODO: move the analysis to separate script and use the DAO instead of info_api
+
+# VISUALIZE one entry
 entry = st.selectbox("Select an entry ID:", entries)
 entry_id = entry["id"]
 entry_date = entry["last_updated"]
@@ -26,57 +172,50 @@ entry_date = entry["last_updated"]
 if entry_id:
     st.markdown(f"## {entry_date}")
 
-    request_url = base_url + f"/entry/{entry_id}/readings"
-    response = requests.get(request_url)
-    if response.status_code == 200:
-        data = response.json()
+    data = get_entry_readings(entry_id)
 
-        # Extracting readings and hover text
-        for key in data.keys():
-            wells = sorted(data[key].keys())
-            rows = sorted(list(set(well[0] for well in wells)), reverse=True)
-            columns = sorted(list(set(int(well[1:]) for well in wells)))
+    # Extracting readings and hover text
+    for key in data.keys():
+        wells = sorted(data[key].keys())
+        rows = sorted(list(set(well[0] for well in wells)), reverse=True)
+        columns = sorted(list(set(int(well[1:]) for well in wells)))
 
-            heatmap_data = np.zeros((len(rows), len(columns)))
-            hovertext = np.empty((len(rows), len(columns)), dtype=object)
-            ctrl = np.log2(
-                (data[key]["A1"]["reading"] + data[key]["B1"]["reading"]) / 2
+        heatmap_data = np.zeros((len(rows), len(columns)))
+        hovertext = np.empty((len(rows), len(columns)), dtype=object)
+        ctrl = np.log2((data[key]["A1"]["reading"] + data[key]["B1"]["reading"]) / 2)
+
+        for well in wells:
+            row_idx = rows.index(well[0])
+            col_idx = columns.index(int(well[1:]))
+            heatmap_data[row_idx, col_idx] = data[key][well]["reading"]
+
+            components = data["0"][well]["components"]
+            hovertext[row_idx, col_idx] = (
+                f"Well: {well}<br>Reading: {data[key][well]['reading']}"
+                f"<br>log(reading): {round(np.log2(heatmap_data[row_idx, col_idx]) - ctrl, 2)}"
+                f"<br>Amines: {components['amines']}<br>Isocyanide: {components['isocyanide']}"
+                f"<br>Lipid Aldehyde: {components['lipid_aldehyde']}"
+                f"<br>Lipid Carboxylic Acid: {components['lipid_carboxylic_acid']}"
             )
 
-            for well in wells:
-                row_idx = rows.index(well[0])
-                col_idx = columns.index(int(well[1:]))
-                heatmap_data[row_idx, col_idx] = data[key][well]["reading"]
-
-                components = data["0"][well]["components"]
-                hovertext[row_idx, col_idx] = (
-                    f"Well: {well}<br>Reading: {data[key][well]['reading']}"
-                    f"<br>log(reading): {round(np.log2(heatmap_data[row_idx, col_idx]) - ctrl, 2)}"
-                    f"<br>Amines: {components['amines']}<br>Isocyanide: {components['isocyanide']}"
-                    f"<br>Lipid Aldehyde: {components['lipid_aldehyde']}"
-                    f"<br>Lipid Carboxylic Acid: {components['lipid_carboxylic_acid']}"
-                )
-
-            # blank
-            # log transform the data
-            heatmap_data = np.log2(heatmap_data) - ctrl
-            fig = go.Figure(
-                data=go.Heatmap(
-                    z=heatmap_data,
-                    x=[str(col) for col in columns],
-                    y=rows,
-                    text=hovertext,
-                    hoverinfo="text",
-                    colorscale="Viridis",
-                )
+        # blank
+        # log transform the data
+        heatmap_data = np.log2(heatmap_data) - ctrl
+        fig = go.Figure(
+            data=go.Heatmap(
+                z=heatmap_data,
+                x=[str(col) for col in columns],
+                y=rows,
+                text=hovertext,
+                hoverinfo="text",
+                colorscale="Viridis",
             )
+        )
 
-            fig.update_layout(
-                title=f"96-well Plate Readings Heatmap; rep {key}",
-                xaxis_title="Column",
-                yaxis_title="Row",
-            )
+        fig.update_layout(
+            title=f"96-well Plate Readings Heatmap; rep {key}",
+            xaxis_title="Column",
+            yaxis_title="Row",
+        )
 
-            st.plotly_chart(fig)
-    else:
-        st.error("Failed to fetch data. Please check the entry ID.")
+        st.plotly_chart(fig)
