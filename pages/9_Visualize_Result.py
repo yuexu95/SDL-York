@@ -1,3 +1,5 @@
+from typing import Dict
+import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
@@ -23,7 +25,7 @@ def get_entry_readings(entry_id):
         st.error("Failed to fetch data. Please check the entry ID.")
 
 
-def log_and_norm_reading(readings):
+def log_and_norm_reading(readings) -> Dict[str, Dict]:
     """loop and call the _log_and_norm_reading function"""
     return {key: _log_and_norm_reading(value) for key, value in readings.items()}
 
@@ -163,8 +165,58 @@ st.title("96-well Plate Readings Heatmap")
 entries = get_entries()
 
 # TODO: move the analysis to separate script and use the DAO instead of info_api
+# normalize and integrate all readings
+integrated_data = {}
+for entry in entries:
+    entry_id = entry["id"]
+
+    data = get_entry_readings(entry_id)
+    normalized_data = log_and_norm_reading(data)
+    qc_data = qc_entry_readings(normalized_data)
+
+    integrated_data[entry_id] = qc_data
+
+# st.write(integrated_data)
+
+# make the integrated data to dataframe, including the experimental type readings
+# each row contains the recordings for a lipid structure of AxBxCxDx
+# each row should be |name|max|mean|std|reading1|reading2|reading3|readingN|
+# the readings are the readings of the wells of the same lipid structure
+df_data = {}
+for entry_id, data in integrated_data.items():
+    for well, reading in data.items():
+        if reading["type"] == "experimental":
+            lipid_structure = "".join(
+                [
+                    reading["components"][key]
+                    for key in sorted(reading["components"].keys())
+                ]
+            )
+            if lipid_structure not in df_data:
+                df_data[lipid_structure] = {}
+                df_data[lipid_structure]["amine"] = reading["components"]["amines"]
+                df_data[lipid_structure]["isocyanide"] = reading["components"][
+                    "isocyanide"
+                ]
+                df_data[lipid_structure]["aldehyde"] = reading["components"][
+                    "lipid_aldehyde"
+                ]
+                df_data[lipid_structure]["carboxylic_acid"] = reading["components"][
+                    "lipid_carboxylic_acid"
+                ]
+            df_data[lipid_structure][f"reading.{entry_id}"] = reading["reading"]
+# make the dataframe
+df = pd.DataFrame(df_data).T
+# add the mean, std, and max columns
+df.insert(4, "max", df.filter(like="reading").max(axis=1, skipna=True))
+df.insert(5, "mean", df.filter(like="reading").mean(axis=1, skipna=True))
+df.insert(6, "std", df.filter(like="reading").std(axis=1, skipna=True))
+
+# full screen width
+st.write(df, use_container_width=True)
 
 # VISUALIZE one entry
+# with st.expander("Select an entry to visualize"):
 entry = st.selectbox("Select an entry ID:", entries)
 entry_id = entry["id"]
 entry_date = entry["last_updated"]
@@ -182,7 +234,9 @@ if entry_id:
 
         heatmap_data = np.zeros((len(rows), len(columns)))
         hovertext = np.empty((len(rows), len(columns)), dtype=object)
-        ctrl = np.log2((data[key]["A1"]["reading"] + data[key]["B1"]["reading"]) / 2)
+        ctrl = (
+            np.log2(data[key]["A1"]["reading"]) + np.log2(data[key]["B1"]["reading"])
+        ) / 2
 
         for well in wells:
             row_idx = rows.index(well[0])
