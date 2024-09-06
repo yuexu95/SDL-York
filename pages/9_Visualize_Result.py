@@ -25,11 +25,13 @@ def get_entry_readings(entry_id):
         st.error("Failed to fetch data. Please check the entry ID.")
 
 
+@st.cache_data
 def log_and_norm_reading(readings) -> Dict[str, Dict]:
     """loop and call the _log_and_norm_reading function"""
     return {key: _log_and_norm_reading(value) for key, value in readings.items()}
 
 
+@st.cache_data
 def _log_and_norm_reading(reading):
     """
     Normalize the readings by calling the log and norm function. Essentially, it logs the readings and normalizes them by the control well readings. The first two wells that have none components are the control wells. The others of none components are the benchmark lipids of MC3. The rest are the experimental wells.
@@ -137,17 +139,19 @@ def qc_entry_readings(nomalized_readings, threshold=2):
         if len(data["reading"]) == 1:
             qc_data[well]["reading"] = data["reading"][0]
         elif len(data["reading"]) == 2:
-            if abs(data["reading"][0] - data["reading"][1]) < threshold:
+            data0, data1 = data["reading"]
+            if abs(data0 - data1) < threshold:
                 qc_data[well]["reading"] = np.mean(data["reading"])
             else:
                 qc_data[well]["reading"] = np.nan
         elif len(data["reading"]) == 4:
-            if abs(data["reading"][0] - data["reading"][1]) < threshold:
+            data0, data1, data2, data3 = data["reading"]
+            if abs(data0 - data1) < threshold:
                 reading1 = np.mean(data["reading"][:2])
             else:
                 reading1 = np.nan
 
-            if abs(data["reading"][2] - data["reading"][3]) < threshold:
+            if abs(data2 - data3) < threshold:
                 reading2 = np.mean(data["reading"][2:])
             else:
                 reading2 = np.nan
@@ -166,15 +170,18 @@ entries = get_entries()
 
 # TODO: move the analysis to separate script and use the DAO instead of info_api
 # normalize and integrate all readings
-integrated_data = {}
-for entry in entries:
-    entry_id = entry["id"]
+st.subheader("Processing all readings:")
+with st.container(height=300):
+    integrated_data = {}
+    for entry in entries:
+        entry_id = entry["id"]
+        st.write(f"Processing entry {entry_id}...")
 
-    data = get_entry_readings(entry_id)
-    normalized_data = log_and_norm_reading(data)
-    qc_data = qc_entry_readings(normalized_data)
+        data = get_entry_readings(entry_id)
+        normalized_data = log_and_norm_reading(data)
+        qc_data = qc_entry_readings(normalized_data)
 
-    integrated_data[entry_id] = qc_data
+        integrated_data[entry_id] = qc_data
 
 # st.write(integrated_data)
 
@@ -213,6 +220,7 @@ df.insert(5, "mean", df.filter(like="reading").mean(axis=1, skipna=True))
 df.insert(6, "std", df.filter(like="reading").std(axis=1, skipna=True))
 
 # full screen width
+st.subheader("Integrated readings:")
 st.write(df, use_container_width=True)
 
 # VISUALIZE one entry
