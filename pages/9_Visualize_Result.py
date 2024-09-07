@@ -207,6 +207,12 @@ def data2df(integrated_data):
     return df
 
 
+st.set_page_config(
+    page_icon="🦾",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
 st.title("96-well Plate Readings Heatmap")
 
 # Get available entry IDs
