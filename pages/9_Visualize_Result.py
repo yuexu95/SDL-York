@@ -1,12 +1,46 @@
+import base64
+import io
+import os
 from typing import Dict
-import pandas as pd
-import streamlit as st
-import plotly.graph_objects as go
-import numpy as np
-import requests
 
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+import requests
+import streamlit as st
+from rdkit import Chem
+from rdkit.Chem import Draw
+from rdkit.Chem.Draw import rdMolDraw2D
 
 base_url = "http://192.168.1.11:8700"
+st.set_page_config(
+    page_icon="🦾",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+
+@st.cache_data
+def get_lipid_id2smiles():
+    lipid_library_file = "../../../model/data_process/220k_library_with_meta.csv"
+    assert os.path.exists(lipid_library_file), "The lipid library file does not exist."
+    lipid_library = pd.read_csv(lipid_library_file)
+    # select columns
+    lipid_library = lipid_library[
+        [
+            "component_str",
+            "combined_mol_SMILES",
+            "A_name",
+            "B_name",
+            "C_name",
+            "D_name",
+        ]
+    ]
+    lipid_id2smiles = lipid_library.set_index("component_str").to_dict(orient="index")
+    return lipid_id2smiles
+
+
+lipid_id2smiles = get_lipid_id2smiles()
 
 
 def get_entries():
@@ -204,14 +238,45 @@ def data2df(integrated_data):
     df.insert(4, "max", df.filter(like="reading").max(axis=1, skipna=True))
     df.insert(5, "mean", df.filter(like="reading").mean(axis=1, skipna=True))
     df.insert(6, "std", df.filter(like="reading").std(axis=1, skipna=True))
+
+    # add the similes column by searching the lipid_id2smiles
+    smiles = df.index.map(
+        lambda x: (
+            lipid_id2smiles[x]["combined_mol_SMILES"] if x in lipid_id2smiles else None
+        )
+    )
+    df.insert(0, "smiles", smiles)
+
+    mols = df["smiles"].map(Chem.MolFromSmiles)
+    imgs = mols.map(Draw.MolToImage)  # type of img is PIL.PngImagePlugin.PngImageFile
+    base64_imgs = []
+    for img in imgs:
+        img_byte_array = io.BytesIO()
+        img.save(img_byte_array, format="PNG")
+        img_byte_array = img_byte_array.getvalue()
+        base64_imgs.append(
+            "data:image/png;base64," + base64.b64encode(img_byte_array).decode("utf-8")
+        )
+    imgs = base64_imgs
+
+    df.insert(1, "mol_img", imgs)
+
+    # svg_xml = """
+    # <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50">
+    #     <circle cx="25" cy="25" r="20" fill="red" />
+    # </svg>
+    # """
+    # # data_url = "data:image/svg+xml;utf8," + urllib.parse.quote(svg_xml)
+    # data_url = "data:image/svg+xml;utf8," + svg_xml
+    # d2d = rdMolDraw2D.MolDraw2DSVG(360, 300)
+    # svgs = []
+    # for mol in mols:
+    #     d2d.DrawMolecule(mol)
+    #     d2d.FinishDrawing()
+    #     svgs.append(d2d.GetDrawingText())
+    # df.insert(1, "mol_img", svgs)
     return df
 
-
-st.set_page_config(
-    page_icon="🦾",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
 
 st.title("96-well Plate Readings Heatmap")
 
@@ -236,7 +301,15 @@ with st.container(height=300):
 
 st.subheader("Integrated readings:")
 df = data2df(integrated_data)
-st.write(df, use_container_width=True)
+
+st.dataframe(
+    df,
+    column_config={
+        "mol_img": st.column_config.ImageColumn(
+            "lipid structure", help="Preview Image of the lipid molecules"
+        )
+    },
+)
 
 # VISUALIZE one entry
 # with st.expander("Select an entry to visualize"):
