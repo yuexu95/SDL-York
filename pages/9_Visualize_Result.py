@@ -267,6 +267,52 @@ def data2df(integrated_data):
     return df
 
 
+@st.cache_data
+def create_box_plot(df: pd.DataFrame, column: str, color: str, title: str, sort=True):
+    if sort:
+        # copy the dataframe
+        df = df.copy()
+
+        # Calculate the median of the "max" values for each category
+        medians = df.groupby(column)["max"].median().sort_values(ascending=False)
+
+        # Sort the DataFrame based on these median values
+        df[column] = df[column].astype("category")
+        df[column] = df[column].cat.set_categories(medians.index)
+        df.sort_values(by=column, key=lambda col: col.cat.codes, inplace=True)
+
+    # Create the box plot
+    return go.Figure(
+        data=[
+            go.Box(
+                y=df["max"],
+                x=df[column],
+                boxpoints="all",
+                jitter=0.3,
+                pointpos=-0.8,
+                line_color="black",
+                fillcolor=color,
+                opacity=0.6,
+                name=title,
+                width=0.6,
+                marker=dict(
+                    # color="rgba(0,0,0,0)",  # color of the boxpoints to transparent
+                    size=3,  # size of the boxpoints
+                    line=dict(
+                        color="black",  # boxpoint outline color
+                        width=1,  # boxpoint outline width
+                    ),
+                ),
+            )
+        ],
+        layout=go.Layout(
+            title=f"Box plot of the max readings per {title.lower()}",
+            xaxis_title=title,
+            yaxis_title="Max Reading",
+        ),
+    )
+
+
 st.title("96-well Plate Readings Heatmap")
 
 # Get available entry IDs
@@ -400,126 +446,15 @@ col2.plotly_chart(
     )
 )
 
-# show the box plot of the max per df["amine"]
-col1.plotly_chart(
-    go.Figure(
-        data=[
-            go.Box(
-                y=df["max"],
-                x=df["amine"],
-                boxpoints="all",
-                jitter=0.3,
-                pointpos=-0.8,
-                line_color="black",
-                fillcolor="lightblue",
-                opacity=0.6,
-                name="Amine",
-                width=0.7,
-                marker=dict(size=3, line=dict(color="black", width=1)),
-            )
-        ],
-        layout=go.Layout(
-            title="Box plot of the max readings per amine",
-            xaxis_title="Amine",
-            yaxis_title="Max Reading",
-        ),
-    ),
-)
-# show the box plot of the max per df["isocyanide"]
+
+# Box plots
+col1.plotly_chart(create_box_plot(df, "amine", "lightblue", "Amine"))
 col2.plotly_chart(
-    go.Figure(
-        data=[
-            go.Box(
-                y=df["max"],
-                x=df["isocyanide"],
-                boxpoints="all",
-                jitter=0.3,
-                pointpos=-0.8,
-                line_color="black",
-                fillcolor="lightgoldenrodyellow",
-                opacity=0.6,
-                name="Isocyanide",
-                width=0.7,
-                marker=dict(
-                    # color="rgba(0,0,0,0)",  # color of the boxpoints to transparent
-                    size=3,  # size of the boxpoints
-                    line=dict(
-                        color="black",  # boxpoint outline color
-                        width=1,  # boxpoint outline width
-                    ),
-                ),
-            )
-        ],
-        layout=go.Layout(
-            title="Box plot of the max readings per isocyanide",
-            xaxis_title="Isocyanide",
-            yaxis_title="Max Reading",
-        ),
-    ),
+    create_box_plot(df, "isocyanide", "lightgoldenrodyellow", "Isocyanide")
 )
-# show the box plot of the max per df["aldehyde"]
-col1.plotly_chart(
-    go.Figure(
-        data=[
-            go.Box(
-                y=df["max"],
-                x=df["aldehyde"],
-                boxpoints="all",
-                jitter=0.3,
-                pointpos=-0.8,
-                line_color="black",
-                fillcolor="lightgreen",
-                opacity=0.6,
-                name="Aldehyde",
-                width=0.7,
-                marker=dict(
-                    # color="rgba(0,0,0,0)",  # color of the boxpoints to transparent
-                    size=3,  # size of the boxpoints
-                    line=dict(
-                        color="black",  # boxpoint outline color
-                        width=1,  # boxpoint outline width
-                    ),
-                ),
-            )
-        ],
-        layout=go.Layout(
-            title="Box plot of the max readings per aldehyde",
-            xaxis_title="Aldehyde",
-            yaxis_title="Max Reading",
-        ),
-    ),
-)
-# show the box plot of the max per df["carboxylic_acid"]
+col1.plotly_chart(create_box_plot(df, "aldehyde", "lightgreen", "Aldehyde"))
 col2.plotly_chart(
-    go.Figure(
-        data=[
-            go.Box(
-                y=df["max"],
-                x=df["carboxylic_acid"],
-                boxpoints="all",
-                jitter=0.3,
-                pointpos=-0.8,
-                line_color="black",
-                fillcolor="lightcoral",
-                opacity=0.6,
-                name="Carboxylic Acid",
-                width=0.6,
-                marker=dict(
-                    # color="rgba(0,0,0,0)",  # color of the boxpoints to transparent
-                    size=3,  # size of the boxpoints
-                    line=dict(
-                        color="black",  # boxpoint outline color
-                        width=1,  # boxpoint outline width
-                    ),
-                ),
-            )
-        ],
-        layout=go.Layout(
-            title="Box plot of the max readings per carboxylic acid",
-            xaxis_title="Carboxylic Acid",
-            yaxis_title="Max Reading",
-        ),
-    )
+    create_box_plot(df, "carboxylic_acid", "lightcoral", "Carboxylic Acid")
 )
 
 st.divider()
