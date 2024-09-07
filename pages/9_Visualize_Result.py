@@ -31,9 +31,13 @@ def get_lipid_id2smiles():
             "component_str",
             "combined_mol_SMILES",
             "A_name",
+            "A_smiles",
             "B_name",
+            "B_smiles",
             "C_name",
+            "C_smiles",
             "D_name",
+            "D_smiles",
         ]
     ]
     lipid_id2smiles = lipid_library.set_index("component_str").to_dict(orient="index")
@@ -446,7 +450,6 @@ col2.plotly_chart(
     )
 )
 
-
 # Box plots
 col1.plotly_chart(create_box_plot(df, "amine", "lightblue", "Amine"))
 col2.plotly_chart(
@@ -455,6 +458,71 @@ col2.plotly_chart(
 col1.plotly_chart(create_box_plot(df, "aldehyde", "lightgreen", "Aldehyde"))
 col2.plotly_chart(
     create_box_plot(df, "carboxylic_acid", "lightcoral", "Carboxylic Acid")
+)
+
+# Parallel set plot, each axis is a component, and the value is the reading max
+# using go.Parcoords
+plot_data = df[["amine", "isocyanide", "aldehyde", "carboxylic_acid", "max"]]
+plot_data["amine_code"] = plot_data["amine"].astype("category").cat.codes
+plot_data["isocyanide_code"] = plot_data["isocyanide"].astype("category").cat.codes
+plot_data["aldehyde_code"] = plot_data["aldehyde"].astype("category").cat.codes
+plot_data["carboxylic_acid_code"] = (
+    plot_data["carboxylic_acid"].astype("category").cat.codes
+)
+
+st.plotly_chart(
+    go.Figure(
+        data=[
+            go.Parcoords(
+                tickfont=dict(size=12),
+                line=dict(
+                    color=plot_data["max"],
+                    colorscale="Electric",
+                    showscale=True,
+                    cmin=plot_data["max"].min(),
+                    cmax=plot_data["max"].max() + 3,
+                ),
+                dimensions=[
+                    dict(
+                        label="Amine",
+                        values=plot_data["amine_code"],
+                        tickvals=plot_data["amine_code"].unique(),
+                        ticktext=plot_data["amine"].unique(),
+                    ),
+                    dict(
+                        label="Isocyanide",
+                        values=plot_data["isocyanide_code"],
+                        tickvals=plot_data["isocyanide_code"].unique(),
+                        ticktext=plot_data["isocyanide"].unique(),
+                    ),
+                    dict(
+                        label="Aldehyde",
+                        values=plot_data["aldehyde_code"],
+                        tickvals=plot_data["aldehyde_code"].unique(),
+                        ticktext=plot_data["aldehyde"].unique(),
+                    ),
+                    dict(
+                        label="Carboxylic Acid",
+                        values=plot_data["carboxylic_acid_code"],
+                        tickvals=plot_data["carboxylic_acid_code"].unique(),
+                        ticktext=plot_data["carboxylic_acid"].unique(),
+                    ),
+                    dict(
+                        label="Max Reading",
+                        values=plot_data["max"],
+                    ),
+                ],
+            )
+        ],
+        layout=go.Layout(
+            title="Parallel Coordinates Plot of the max readings",
+            xaxis_title="Component",
+            yaxis_title="Max Reading",
+            font=dict(size=15),
+            height=450,
+        ),
+    ),
+    use_container_width=True,
 )
 
 st.divider()
