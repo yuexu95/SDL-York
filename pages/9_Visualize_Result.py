@@ -171,6 +171,42 @@ def qc_entry_readings(nomalized_readings, threshold=3):
     return qc_data
 
 
+def data2df(integrated_data):
+    # make the integrated data to dataframe, including the experimental type readings
+    # each row contains the recordings for a lipid structure of AxBxCxDx
+    # each row should be |name|max|mean|std|reading1|reading2|reading3|readingN|
+    df_data = {}
+    for entry_id, data in integrated_data.items():
+        for well, reading in data.items():
+            if reading["type"] == "experimental":
+                lipid_structure = "".join(
+                    [
+                        reading["components"][key]
+                        for key in sorted(reading["components"].keys())
+                    ]
+                )
+                if lipid_structure not in df_data:
+                    df_data[lipid_structure] = {}
+                    df_data[lipid_structure]["amine"] = reading["components"]["amines"]
+                    df_data[lipid_structure]["isocyanide"] = reading["components"][
+                        "isocyanide"
+                    ]
+                    df_data[lipid_structure]["aldehyde"] = reading["components"][
+                        "lipid_aldehyde"
+                    ]
+                    df_data[lipid_structure]["carboxylic_acid"] = reading["components"][
+                        "lipid_carboxylic_acid"
+                    ]
+                df_data[lipid_structure][f"reading.{entry_id}"] = reading["reading"]
+    # make the dataframe
+    df = pd.DataFrame(df_data).T
+    # add the mean, std, and max columns
+    df.insert(4, "max", df.filter(like="reading").max(axis=1, skipna=True))
+    df.insert(5, "mean", df.filter(like="reading").mean(axis=1, skipna=True))
+    df.insert(6, "std", df.filter(like="reading").std(axis=1, skipna=True))
+    return df
+
+
 st.title("96-well Plate Readings Heatmap")
 
 # Get available entry IDs
@@ -190,45 +226,10 @@ with st.container(height=300):
         qc_data = qc_entry_readings(normalized_data)
 
         integrated_data[entry_id] = qc_data
-
 # st.write(integrated_data)
 
-# make the integrated data to dataframe, including the experimental type readings
-# each row contains the recordings for a lipid structure of AxBxCxDx
-# each row should be |name|max|mean|std|reading1|reading2|reading3|readingN|
-# the readings are the readings of the wells of the same lipid structure
-df_data = {}
-for entry_id, data in integrated_data.items():
-    for well, reading in data.items():
-        if reading["type"] == "experimental":
-            lipid_structure = "".join(
-                [
-                    reading["components"][key]
-                    for key in sorted(reading["components"].keys())
-                ]
-            )
-            if lipid_structure not in df_data:
-                df_data[lipid_structure] = {}
-                df_data[lipid_structure]["amine"] = reading["components"]["amines"]
-                df_data[lipid_structure]["isocyanide"] = reading["components"][
-                    "isocyanide"
-                ]
-                df_data[lipid_structure]["aldehyde"] = reading["components"][
-                    "lipid_aldehyde"
-                ]
-                df_data[lipid_structure]["carboxylic_acid"] = reading["components"][
-                    "lipid_carboxylic_acid"
-                ]
-            df_data[lipid_structure][f"reading.{entry_id}"] = reading["reading"]
-# make the dataframe
-df = pd.DataFrame(df_data).T
-# add the mean, std, and max columns
-df.insert(4, "max", df.filter(like="reading").max(axis=1, skipna=True))
-df.insert(5, "mean", df.filter(like="reading").mean(axis=1, skipna=True))
-df.insert(6, "std", df.filter(like="reading").std(axis=1, skipna=True))
-
-# full screen width
 st.subheader("Integrated readings:")
+df = data2df(integrated_data)
 st.write(df, use_container_width=True)
 
 # VISUALIZE one entry
