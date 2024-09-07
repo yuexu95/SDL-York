@@ -357,6 +357,8 @@ col1.plotly_chart(
                 x=df["max"],
                 y=df["std"],
                 mode="markers",
+                text=df.index,
+                hovertemplate="Lipid ID: %{text}<br>Max Reading: %{x}<br>Std Reading: %{y}",
                 marker=dict(
                     size=10,
                     color="lightsalmon",
@@ -380,6 +382,8 @@ col2.plotly_chart(
                 x=df["mean"],
                 y=df["std"],
                 mode="markers",
+                text=df.index,
+                hovertemplate="Lipid ID: %{text}<br>Mean Reading: %{x}<br>Std Reading: %{y}",
                 marker=dict(
                     size=10,
                     color="lightblue",
@@ -392,6 +396,107 @@ col2.plotly_chart(
             title="Scatter plot of the mean vs std readings",
             xaxis_title="Mean Reading",
             yaxis_title="Std Reading",
+        ),
+    )
+)
+
+# show the violin plot of the max per df["amine"]
+col1.plotly_chart(
+    go.Figure(
+        data=[
+            go.Violin(
+                y=df["max"],
+                x=df["amine"],
+                box_visible=True,
+                line_color="black",
+                meanline_visible=True,
+                fillcolor="lightblue",
+                opacity=0.6,
+                name="Amine",
+                # wider
+                box_width=0.7,
+                width=0.7,
+            )
+        ],
+        layout=go.Layout(
+            title="Violin plot of the max readings per amine",
+            xaxis_title="Amine",
+            yaxis_title="Max Reading",
+        ),
+    ),
+)
+# show the violin plot of the max per df["isocyanide"]
+col2.plotly_chart(
+    go.Figure(
+        data=[
+            go.Violin(
+                y=df["max"],
+                x=df["isocyanide"],
+                box_visible=True,
+                line_color="black",
+                meanline_visible=True,
+                fillcolor="lightgoldenrodyellow",
+                opacity=0.6,
+                name="Isocyanide",
+                # wider
+                box_width=0.7,
+                width=1,
+            )
+        ],
+        layout=go.Layout(
+            title="Violin plot of the max readings per isocyanide",
+            xaxis_title="Isocyanide",
+            yaxis_title="Max Reading",
+        ),
+    ),
+)
+# show the violin plot of the max per df["aldehyde"]
+col1.plotly_chart(
+    go.Figure(
+        data=[
+            go.Violin(
+                y=df["max"],
+                x=df["aldehyde"],
+                box_visible=True,
+                line_color="black",
+                meanline_visible=True,
+                fillcolor="lightgreen",
+                opacity=0.6,
+                name="Aldehyde",
+                # wider
+                box_width=0.7,
+                width=1,
+            )
+        ],
+        layout=go.Layout(
+            title="Violin plot of the max readings per aldehyde",
+            xaxis_title="Aldehyde",
+            yaxis_title="Max Reading",
+        ),
+    ),
+)
+# show the violin plot of the max per df["carboxylic_acid"]
+col2.plotly_chart(
+    go.Figure(
+        data=[
+            go.Violin(
+                y=df["max"],
+                x=df["carboxylic_acid"],
+                box_visible=True,
+                line_color="black",
+                meanline_visible=True,
+                fillcolor="lightcoral",
+                opacity=0.6,
+                name="Carboxylic Acid",
+                # wider
+                box_width=0.7,
+                width=1,
+            )
+        ],
+        layout=go.Layout(
+            title="Violin plot of the max readings per carboxylic acid",
+            xaxis_title="Carboxylic Acid",
+            yaxis_title="Max Reading",
         ),
     )
 )
