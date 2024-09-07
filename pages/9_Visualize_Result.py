@@ -205,6 +205,7 @@ def qc_entry_readings(nomalized_readings, threshold=3):
     return qc_data
 
 
+@st.cache_data
 def data2df(integrated_data):
     # make the integrated data to dataframe, including the experimental type readings
     # each row contains the recordings for a lipid structure of AxBxCxDx
@@ -261,20 +262,8 @@ def data2df(integrated_data):
 
     df.insert(1, "mol_img", imgs)
 
-    # svg_xml = """
-    # <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50">
-    #     <circle cx="25" cy="25" r="20" fill="red" />
-    # </svg>
-    # """
-    # # data_url = "data:image/svg+xml;utf8," + urllib.parse.quote(svg_xml)
-    # data_url = "data:image/svg+xml;utf8," + svg_xml
-    # d2d = rdMolDraw2D.MolDraw2DSVG(360, 300)
-    # svgs = []
-    # for mol in mols:
-    #     d2d.DrawMolecule(mol)
-    #     d2d.FinishDrawing()
-    #     svgs.append(d2d.GetDrawingText())
-    # df.insert(1, "mol_img", svgs)
+    # sort the dataframe by the max value
+    df = df.sort_values(by="max", ascending=False)
     return df
 
 
@@ -309,12 +298,108 @@ st.dataframe(
             "lipid structure", help="Preview Image of the lipid molecules"
         )
     },
+    height=450,
+)
+st.write(f"Number of lipid structures: {len(df)}")
+
+col1, col2 = st.columns(2)
+# show the distribution plot of the max and mean readings
+col1.plotly_chart(
+    go.Figure(
+        data=[
+            go.Histogram(
+                x=df["max"],
+                histnorm="probability",
+                marker_color="lightsalmon",
+                opacity=0.75,
+                name="Max Reading",
+            ),
+            go.Histogram(
+                x=df["mean"],
+                histnorm="probability",
+                marker_color="lightblue",
+                opacity=0.75,
+                name="Mean Reading",
+            ),
+        ],
+        layout=go.Layout(
+            title="Distribution of the max and mean readings",
+            xaxis_title="Reading",
+            yaxis_title="Probability",
+        ),
+    )
+)
+# show the distribution plot of the std readings
+col2.plotly_chart(
+    go.Figure(
+        data=[
+            go.Histogram(
+                x=df["std"],
+                histnorm="probability",
+                marker_color="lightgreen",
+                opacity=0.75,
+                name="Std Reading",
+            )
+        ],
+        layout=go.Layout(
+            title="Distribution of the standard deviation readings",
+            xaxis_title="Reading",
+            yaxis_title="Probability",
+            showlegend=True,  # Add this line to show the legend
+        ),
+    )
+)
+# show scatter plot of the max vs std readings
+col1.plotly_chart(
+    go.Figure(
+        data=[
+            go.Scatter(
+                x=df["max"],
+                y=df["std"],
+                mode="markers",
+                marker=dict(
+                    size=10,
+                    color="lightsalmon",
+                    opacity=0.5,
+                    line=dict(width=1, color="DarkSlateGrey"),
+                ),
+            )
+        ],
+        layout=go.Layout(
+            title="Scatter plot of the max vs std readings",
+            xaxis_title="Max Reading",
+            yaxis_title="Std Reading",
+        ),
+    )
+)
+# show scatter plot of the mean vs std readings
+col2.plotly_chart(
+    go.Figure(
+        data=[
+            go.Scatter(
+                x=df["mean"],
+                y=df["std"],
+                mode="markers",
+                marker=dict(
+                    size=10,
+                    color="lightblue",
+                    opacity=0.5,
+                    line=dict(width=1, color="DarkSlateGrey"),
+                ),
+            )
+        ],
+        layout=go.Layout(
+            title="Scatter plot of the mean vs std readings",
+            xaxis_title="Mean Reading",
+            yaxis_title="Std Reading",
+        ),
+    )
 )
 
 st.divider()
 st.subheader("Reading of selected entry:")
 # with st.expander("Select an entry to visualize"):
-entry = st.selectbox("Select an entry ID:", entries, index=0)
+entry = st.selectbox("Select an entry ID:", entries, index=None)
 
 if entry:
     entry_id = entry["id"]
