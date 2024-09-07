@@ -400,101 +400,122 @@ col2.plotly_chart(
     )
 )
 
-# show the violin plot of the max per df["amine"]
+# show the box plot of the max per df["amine"]
 col1.plotly_chart(
     go.Figure(
         data=[
-            go.Violin(
+            go.Box(
                 y=df["max"],
                 x=df["amine"],
-                box_visible=True,
+                boxpoints="all",
+                jitter=0.3,
+                pointpos=-0.8,
                 line_color="black",
-                meanline_visible=True,
                 fillcolor="lightblue",
                 opacity=0.6,
                 name="Amine",
-                # wider
-                box_width=0.7,
                 width=0.7,
+                marker=dict(size=3, line=dict(color="black", width=1)),
             )
         ],
         layout=go.Layout(
-            title="Violin plot of the max readings per amine",
+            title="Box plot of the max readings per amine",
             xaxis_title="Amine",
             yaxis_title="Max Reading",
         ),
     ),
 )
-# show the violin plot of the max per df["isocyanide"]
+# show the box plot of the max per df["isocyanide"]
 col2.plotly_chart(
     go.Figure(
         data=[
-            go.Violin(
+            go.Box(
                 y=df["max"],
                 x=df["isocyanide"],
-                box_visible=True,
+                boxpoints="all",
+                jitter=0.3,
+                pointpos=-0.8,
                 line_color="black",
-                meanline_visible=True,
                 fillcolor="lightgoldenrodyellow",
                 opacity=0.6,
                 name="Isocyanide",
-                # wider
-                box_width=0.7,
-                width=1,
+                width=0.7,
+                marker=dict(
+                    # color="rgba(0,0,0,0)",  # color of the boxpoints to transparent
+                    size=3,  # size of the boxpoints
+                    line=dict(
+                        color="black",  # boxpoint outline color
+                        width=1,  # boxpoint outline width
+                    ),
+                ),
             )
         ],
         layout=go.Layout(
-            title="Violin plot of the max readings per isocyanide",
+            title="Box plot of the max readings per isocyanide",
             xaxis_title="Isocyanide",
             yaxis_title="Max Reading",
         ),
     ),
 )
-# show the violin plot of the max per df["aldehyde"]
+# show the box plot of the max per df["aldehyde"]
 col1.plotly_chart(
     go.Figure(
         data=[
-            go.Violin(
+            go.Box(
                 y=df["max"],
                 x=df["aldehyde"],
-                box_visible=True,
+                boxpoints="all",
+                jitter=0.3,
+                pointpos=-0.8,
                 line_color="black",
-                meanline_visible=True,
                 fillcolor="lightgreen",
                 opacity=0.6,
                 name="Aldehyde",
-                # wider
-                box_width=0.7,
-                width=1,
+                width=0.7,
+                marker=dict(
+                    # color="rgba(0,0,0,0)",  # color of the boxpoints to transparent
+                    size=3,  # size of the boxpoints
+                    line=dict(
+                        color="black",  # boxpoint outline color
+                        width=1,  # boxpoint outline width
+                    ),
+                ),
             )
         ],
         layout=go.Layout(
-            title="Violin plot of the max readings per aldehyde",
+            title="Box plot of the max readings per aldehyde",
             xaxis_title="Aldehyde",
             yaxis_title="Max Reading",
         ),
     ),
 )
-# show the violin plot of the max per df["carboxylic_acid"]
+# show the box plot of the max per df["carboxylic_acid"]
 col2.plotly_chart(
     go.Figure(
         data=[
-            go.Violin(
+            go.Box(
                 y=df["max"],
                 x=df["carboxylic_acid"],
-                box_visible=True,
+                boxpoints="all",
+                jitter=0.3,
+                pointpos=-0.8,
                 line_color="black",
-                meanline_visible=True,
                 fillcolor="lightcoral",
                 opacity=0.6,
                 name="Carboxylic Acid",
-                # wider
-                box_width=0.7,
-                width=1,
+                width=0.6,
+                marker=dict(
+                    # color="rgba(0,0,0,0)",  # color of the boxpoints to transparent
+                    size=3,  # size of the boxpoints
+                    line=dict(
+                        color="black",  # boxpoint outline color
+                        width=1,  # boxpoint outline width
+                    ),
+                ),
             )
         ],
         layout=go.Layout(
-            title="Violin plot of the max readings per carboxylic acid",
+            title="Box plot of the max readings per carboxylic acid",
             xaxis_title="Carboxylic Acid",
             yaxis_title="Max Reading",
         ),
