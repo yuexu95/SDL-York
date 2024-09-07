@@ -298,7 +298,7 @@ with st.container(height=300):
 
         integrated_data[entry_id] = qc_data
 # st.write(integrated_data)
-
+st.divider()
 st.subheader("Integrated readings:")
 df = data2df(integrated_data)
 
@@ -311,13 +311,14 @@ st.dataframe(
     },
 )
 
-# VISUALIZE one entry
+st.divider()
+st.subheader("Reading of selected entry:")
 # with st.expander("Select an entry to visualize"):
-entry = st.selectbox("Select an entry ID:", entries)
-entry_id = entry["id"]
-entry_date = entry["last_updated"]
+entry = st.selectbox("Select an entry ID:", entries, index=0)
 
-if entry_id:
+if entry:
+    entry_id = entry["id"]
+    entry_date = entry["last_updated"]
     st.markdown(f"## {entry_date}")
 
     data = get_entry_readings(entry_id)
