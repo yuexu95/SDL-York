@@ -183,7 +183,7 @@ def qc_entry_readings(nomalized_readings, threshold=3):
             st.write(
                 f"{message_prefix} The difference between the two readings ({data0:.2f},{data1:.2f}) is larger than {threshold}."
             )
-            return np.nan
+            return np.mean([data0, data1])
 
     for well, data in qc_data.items():
         if len(data["reading"]) == 1:
@@ -582,6 +582,44 @@ if entry:
             title=f"96-well Plate Readings Heatmap; rep {key}",
             xaxis_title="Column",
             yaxis_title="Row",
+            width=800,
         )
 
-        st.plotly_chart(fig)
+        event = st.plotly_chart(fig, key=f"heatmap_{entry_id}_{key}", on_select="rerun")
+        # event.selection
+
+        # on click event, show the details of the lipid structure
+
+# fig = go.Figure(
+#     data=go.Heatmap(
+#         z=heatmap_data,
+#         x=[str(col) for col in columns],
+#         y=rows,
+#         text=hovertext,
+#         hoverinfo="text",
+#         colorscale="Viridis",
+#     ),
+#     layout=go.Layout(
+#         title=f"96-well Plate Readings Heatmap; rep {key}",
+#         xaxis_title="Column",
+#         yaxis_title="Row",
+#         width=800,  # Set the width of the figure
+#     ),
+# )
+# event = st.plotly_chart(
+#     fig,
+#     # key=f"heatmap_{entry_id}_{key}",
+#     on_select="rerun",
+#     selection_mode="points",
+# )
+# event.selection
+
+# import streamlit as st
+# import plotly.express as px
+
+# df = px.data.iris()  # iris is a pandas DataFrame
+# fig = px.scatter(df, x="sepal_width", y="sepal_length")
+
+# event = st.plotly_chart(fig, key="iris", on_select="rerun")
+
+# event
