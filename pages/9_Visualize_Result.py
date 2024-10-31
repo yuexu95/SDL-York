@@ -118,6 +118,18 @@ def _log_and_norm_reading(reading, clip_negative=True):
         else:
             log_reading[key]["type"] = "experimental"
 
+    # qc of control wells
+    min_control_reading = min([log_reading[key]["reading"] for key in empty_wells])
+    if min_control_reading > np.log2(300):
+        st.write(
+            f"The control well readings are too high: {np.exp2(min_control_reading):.2f}"
+            f" Probably due to light leakage. Autoset control reading to 300."
+        )
+        min_control_reading = np.log2(300)
+    for key in empty_wells:
+        if log_reading[key]["reading"] > np.log2(300):
+            log_reading[key]["reading"] = min_control_reading
+
     # normalize the data
     ctrl = np.mean([log_reading[key]["reading"] for key in empty_wells])
     for key in log_reading.keys():
