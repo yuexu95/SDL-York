@@ -593,7 +593,8 @@ if entry:
     st.markdown(f"## {entry_date}")
 
     data = get_entry_readings(entry_id)
-    normalized_data = log_and_norm_reading(data)
+    gain_values = get_entry_gain(entry_id)
+    normalized_data = log_and_norm_reading(data, gain_values)
 
     # Extracting readings and hover text
     for key in data.keys():
