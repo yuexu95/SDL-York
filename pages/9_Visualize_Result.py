@@ -1,6 +1,8 @@
 import base64
 import io
+import json
 import os
+from pathlib import Path
 from typing import Dict
 
 import numpy as np
@@ -63,17 +65,54 @@ def get_entry_readings(entry_id):
         st.error("Failed to fetch data. Please check the entry ID.")
 
 
-def log_and_norm_reading(readings) -> Dict[str, Dict]:
+def get_entry_gain(entry_id):
+    """Get the gain values of the the experiment readings."""
+    request_url = base_url + f"/entry/{entry_id}/gain"
+    response = requests.get(request_url)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise ValueError("Failed to fetch data. Please check the entry ID.")
+
+
+def load_regressor_from_json(file_path=None):
+    """Loads the linear regression model from JSON file and returns a simple callable function."""
+    if file_path is None:
+        cur_file_dir = Path(__file__).parent
+        file_path = (
+            cur_file_dir
+            / "../../../../model/evaluation/notebooks/empty_control_calib/linear_regressor.json"
+        )
+    assert os.path.exists(file_path), f"The regressor file does not exist: {file_path}"
+
+    with open(file_path, "r") as json_file:
+        regressor_data = json.load(json_file)
+
+    # Return a function that calculates y = mx + b
+    def regressor_function(gain_value):
+        return regressor_data["slope"] * gain_value + regressor_data["intercept"]
+
+    return regressor_function
+
+
+def log_and_norm_reading(readings, gain_values=None) -> Dict[str, Dict]:
     """loop and call the _log_and_norm_reading function"""
-    return {key: _log_and_norm_reading(value) for key, value in readings.items()}
+    if gain_values is None:
+        return {key: _log_and_norm_reading(value) for key, value in readings.items()}
+    else:
+        return {
+            key: _log_and_norm_reading(value, gain_values[key])
+            for key, value in readings.items()
+        }
 
 
-def _log_and_norm_reading(reading, clip_negative=True):
+def _log_and_norm_reading(reading, gain_value=None, clip_negative=True):
     """
     Normalize the readings by calling the log and norm function. Essentially, it logs the readings and normalizes them by the control well readings. The first two wells that have none components are the control wells. The others of none components are the benchmark lipids of MC3. The rest are the experimental wells.
 
     Args:
         readings (dict): A dictionary containing the readings for each well.
+        gain_value (optional, float): The gain value of the experiment. If provided, the empty control well readings will be inferred from the gain value.
         example:
         {
             "A1": {"reading": 0.0, "components": {...}},
@@ -131,7 +170,12 @@ def _log_and_norm_reading(reading, clip_negative=True):
             log_reading[key]["reading"] = min_control_reading
 
     # normalize the data
-    ctrl = np.mean([log_reading[key]["reading"] for key in empty_wells])
+    if gain_value is not None:
+        # calculate the control well readings from the gain value
+        ctrl = load_regressor_from_json()(gain_value)
+        print(f"Inferred log control reading from gain {gain_value}: {ctrl:.2f}")
+    else:
+        ctrl = np.mean([log_reading[key]["reading"] for key in empty_wells])
     for key in log_reading.keys():
         log_reading[key]["reading"] = log_reading[key]["reading"] - ctrl
         if clip_negative:
@@ -344,7 +388,8 @@ with st.container(height=300):
         st.write(f"Processing entry {entry_id}...")
 
         data = get_entry_readings(entry_id)
-        normalized_data = log_and_norm_reading(data)
+        gain_values = get_entry_gain(entry_id)
+        normalized_data = log_and_norm_reading(data, gain_values)
         qc_data = qc_entry_readings(normalized_data)
 
         integrated_data[entry_id] = qc_data
