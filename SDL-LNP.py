@@ -56,7 +56,7 @@ def example() -> None:
 
     # Define steps and descriptions
     steps = {
-        "feeders": [
+        "feeders, ensure correct orientation": [
             "≥ 6 300 ul racks in feeder_0",
             "≥ 10 20 ul racks in feeder_1",
             "≥ 4 PCR DeepWells in feeder_2",
@@ -77,9 +77,10 @@ def example() -> None:
             "put four new plates of cells in incubator",
             "Check the water level",
         ],
-        "bin": ["Empty the bin"],
         "camera": ["Check the camera"],
+        "robot": ["Restart the robot and set to remote"],
         "health_check": ["Check the health of the system"],
+        "bin": ["Empty the bin"],
     }
 
     # Step 1: Select Job ID
@@ -169,7 +170,9 @@ def example() -> None:
 
         # have a button to check all
         st.subheader("Check All")
-        if st.button("Check All"):
+        st.session_state.check_all = st.button("Check All")
+
+        if st.session_state.check_all:
             for step, tasks in steps.items():
                 for i, task in enumerate(tasks):
                     checkbox_states[step][i] = True
@@ -184,7 +187,7 @@ def example() -> None:
             True if len(refill_df) == 0 else edited_df["Confirm"].all()
         )
 
-        if all_steps_completed and all_refill_confirmed:
+        if True:
             # Display activation buttons only if all checkboxes are checked and all refillments are confirmed (if any)
             st.header("Actions")
 
